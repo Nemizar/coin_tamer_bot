@@ -1,0 +1,86 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    # Базовые проверки
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+
+    # Стиль и читаемость
+    - revive
+    - gocritic
+
+    # Потенциальные ошибки
+    - bodyclose
+    - nilerr
+    - unconvert
+    - predeclared
+
+    # Качество архитектуры
+    - gocyclo
+    - dupl
+    - prealloc
+    - unparam
+    - nakedret
+
+    # Доп. проверки (по желанию можно выключить)
+    - misspell
+    - whitespace
+  settings:
+    gocyclo:
+      min-complexity: 12
+    dupl:
+      threshold: 100
+    revive:
+      rules:
+        - name: package-comments
+        - name: exported
+          arguments:
+            - disable-checks-on-variables
+        - name: var-naming
+        - name: receiver-naming
+        - name: indent-error-flow
+        - name: error-return
+        - name: early-return
+        - name: context-as-argument
+        - name: time-naming
+        - name: unexported-naming
+    gocritic:
+      enabled-checks:
+        - appendCombine
+        - assignOp
+        - boolExprSimplify
+        - commentedOutCode
+        - emptyStringTest
+        - ifElseChain
+        - nilValReturn
+        - ptrToRefParam
+        - sloppyLen
+        - typeSwitchVar
+        - unnecessaryDefer
+        - yodaStyleExpr
+  exclusions:
+    paths:
+      - vendor
+      - migrations
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - gocyclo
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Nemizar/coin_tamer_bot
