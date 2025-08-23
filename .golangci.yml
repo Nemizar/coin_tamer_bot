@@ -55,15 +55,11 @@ linters:
     gocritic:
       enabled-checks:
         - appendCombine
-        - assignOp
         - boolExprSimplify
         - commentedOutCode
         - emptyStringTest
-        - ifElseChain
         - nilValReturn
         - ptrToRefParam
-        - sloppyLen
-        - typeSwitchVar
         - unnecessaryDefer
         - yodaStyleExpr
   exclusions:
