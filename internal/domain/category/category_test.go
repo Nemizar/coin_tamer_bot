@@ -21,8 +21,7 @@ func TestNewCategory(t *testing.T) {
 		parentID shared.ID
 		cName    string
 		want     category.Category
-		wantErr  bool
-		err      error
+		wantErr  error
 	}{
 		{
 			name:     "Создание с валидными данными",
@@ -49,31 +48,28 @@ func TestNewCategory(t *testing.T) {
 			userID:   id,
 			parentID: id,
 			cName:    "",
-			wantErr:  true,
-			err:      category.ErrEmptyName,
+			wantErr:  category.ErrEmptyName,
 		},
 		{
 			name:     "Создание с очень длинным именем. Ошибка",
 			userID:   id,
 			parentID: id,
 			cName:    strings.Repeat("a", 101),
-			wantErr:  true,
-			err:      category.ErrTooLongName,
+			wantErr:  category.ErrTooLongName,
 		},
 		{
 			name:     "Создание с не валидным пользователем",
 			parentID: id,
 			cName:    "Категория 1",
-			wantErr:  true,
-			err:      category.ErrInvalidUserID,
+			wantErr:  category.ErrInvalidUserID,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := category.NewCategory(tt.cName, tt.userID, tt.parentID)
-			if tt.wantErr {
+			if tt.wantErr != nil {
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.err)
+				assert.ErrorIs(t, err, tt.wantErr)
 
 				return
 			}
