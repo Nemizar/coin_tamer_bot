@@ -8,19 +8,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/domain/category"
-	"github.com/Nemizar/coin_tamer_bot/internal/domain/shared"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/category"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 )
 
 func TestNewCategory(t *testing.T) {
 	id := shared.NewID()
+	type want struct {
+		name     string
+		ownerID  shared.ID
+		parentID shared.ID
+	}
 
 	tests := []struct {
 		name     string
 		userID   shared.ID
 		parentID shared.ID
 		cName    string
-		want     category.Category
+		want     want
 		wantErr  error
 	}{
 		{
@@ -28,19 +33,19 @@ func TestNewCategory(t *testing.T) {
 			userID:   id,
 			parentID: id,
 			cName:    "Категория 1",
-			want: category.Category{
-				Name:     "Категория 1",
-				OwnerID:  id,
-				ParentID: id,
+			want: want{
+				name:     "Категория 1",
+				ownerID:  id,
+				parentID: id,
 			},
 		},
 		{
 			name:   "Создание родительской категории",
 			userID: id,
 			cName:  "Категория 1",
-			want: category.Category{
-				Name:    "Категория 1",
-				OwnerID: id,
+			want: want{
+				name:    "Категория 1",
+				ownerID: id,
 			},
 		},
 		{
@@ -74,11 +79,11 @@ func TestNewCategory(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, tt.want.ParentID, got.ParentID)
-			assert.Equal(t, tt.want.OwnerID, got.OwnerID)
-			assert.Equal(t, tt.want.Name, got.Name)
-			assert.False(t, got.ID.IsZero())
-			assert.NotEqual(t, time.Time{}, got.CreatedAt)
+			assert.Equal(t, tt.want.parentID, got.ParentID())
+			assert.Equal(t, tt.want.ownerID, got.OwnerID())
+			assert.Equal(t, tt.want.name, got.Name())
+			assert.False(t, got.ID().IsZero())
+			assert.NotEqual(t, time.Time{}, got.CreatedAt())
 		})
 	}
 }

@@ -6,13 +6,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/domain/shared"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 )
 
 func TestNewID(t *testing.T) {
 	id := shared.NewID()
 
-	require.False(t, id.IsZero(), "NewID() должен возвращать непустой ID")
+	require.False(t, id.IsZero(), "NewID() должен возвращать непустой id")
 	require.NotEqual(t, uuid.Nil, id.Value())
 	require.Equal(t, id.String(), id.Value().String())
 }
@@ -34,10 +34,10 @@ func TestNewIDFromString_Invalid(t *testing.T) {
 
 func TestIsZero(t *testing.T) {
 	var zero shared.ID
-	require.True(t, zero.IsZero(), "нулевой ID должен быть пустым")
+	require.True(t, zero.IsZero(), "нулевой id должен быть пустым")
 
 	id := shared.NewID()
-	require.False(t, id.IsZero(), "сгенерированный ID не должен быть пустым")
+	require.False(t, id.IsZero(), "сгенерированный id не должен быть пустым")
 }
 
 func TestValue(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/domain/transaction"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/transaction"
 )
 
 func TestNewAmount_Success(t *testing.T) {
