@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: bot
+      POSTGRES_DB: bot
+      POSTGRES_PASSWORD: bot
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - bot
+
+networks:
+  bot:
+
+volumes:
+  postgres:
