@@ -1,10 +1,10 @@
 package postgres
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/categoryrepo"
@@ -81,7 +81,7 @@ func (u *UnitOfWork) RollbackUnlessCommitted() error {
 	err := u.tx.Rollback()
 	u.clearTx()
 
-	if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+	if err != nil && !errors.Is(err, sql.ErrTxDone) {
 		return fmt.Errorf("failed to rollback transaction: %w", err)
 	}
 
