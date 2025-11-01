@@ -40,10 +40,6 @@ linters:
       threshold: 100
     revive:
       rules:
-        - name: package-comments
-        - name: exported
-          arguments:
-            - disable-checks-on-variables
         - name: var-naming
         - name: receiver-naming
         - name: indent-error-flow
