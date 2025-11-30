@@ -1,6 +1,4 @@
 name: golangci-lint
-env:
-  GOFLAGS: -mod=vendor
 on:
   push:
   pull_request:
