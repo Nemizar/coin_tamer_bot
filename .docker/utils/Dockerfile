@@ -22,7 +22,8 @@ ADD https://github.com/hexdigest/gowrap/releases/download/v${GOWRAP_VERION}/gowr
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOC_GO_VERSION} && \
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${PROTOC_GRPC_VERSION} && \
     go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION} && \
-    go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v${GRPC_GATEWAY_VERSION}
+    go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v${GRPC_GATEWAY_VERSION} && \
+    go install github.com/pressly/goose/v3/cmd/goose@latest
 
 RUN apk add --no-cache curl unzip
 

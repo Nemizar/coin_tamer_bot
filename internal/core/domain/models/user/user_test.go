@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 )
@@ -15,39 +17,29 @@ import (
 func TestNewUser(t *testing.T) {
 	tests := []struct {
 		name      string
-		chatID    int64
 		username  string
 		wantError error
 	}{
 		{
 			name:      "Валидный пользователь",
-			chatID:    12345,
 			username:  "Alice",
 			wantError: nil,
 		},
 		{
-			name:      "Невалидный идентификатор чата",
-			chatID:    0,
-			username:  "Alice",
-			wantError: user.ErrInvalidChatID,
-		},
-		{
 			name:      "Невалидное имя - пустое",
-			chatID:    12345,
 			username:  "",
-			wantError: user.ErrInvalidName,
+			wantError: errs.ErrValueIsRequired,
 		},
 		{
 			name:      "Невалидное имя - состоит из пробелов (пустое)",
-			chatID:    12345,
 			username:  "   ",
-			wantError: user.ErrInvalidName,
+			wantError: errs.ErrValueIsRequired,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u, err := user.NewUser(tt.chatID, tt.username)
+			u, err := user.New(tt.username)
 
 			if tt.wantError != nil {
 				require.Error(t, err)
@@ -58,7 +50,6 @@ func TestNewUser(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.chatID, u.ChatID())
 			assert.Equal(t, tt.username, u.Name())
 			assert.NotEqual(t, shared.ID{}, u.ID())
 			assert.WithinDuration(t, time.Now(), u.CreatedAt(), time.Second)

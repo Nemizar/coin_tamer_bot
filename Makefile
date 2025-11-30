@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 UTILS_COMMAND = docker build -q -f .docker/utils/Dockerfile .docker/utils | xargs -I % docker run --rm -v .:/src %
+MIGRATE_COMMAND = docker build -q -f .docker/utils/Dockerfile .docker/utils | xargs -I % docker run --network bot --rm -v .:/src %
 
 # ==================================================================================== #
 # HELPERS
@@ -52,24 +53,20 @@ restart-%:
 
 ## migrate-create: Создание миграции. Пример make migrate-create name=create_table
 migrate-create:
-	migrate create -seq -ext=.sql -dir=./migrations $(name)
+	${UTILS_COMMAND} goose create $(name) sql
 
 ## migrate-up: Выполнение миграции
 migrate-up:
-	migrate -path=./migrations -database=$(COIN_TAMER_DB_DSN) up
-
-## migrate-version: Узнать версию схемы БД
-migrate-version:
-	migrate -path=./migrations -database=$(COIN_TAMER_DB_DSN) version
-
-## migrate-up: Выполнение миграции с флагом force. Пример make migrate-up-force version=1
-migrate-force:
-	migrate -path=./migrations -database=$(COIN_TAMER_DB_DSN) force $(version)
+	${MIGRATE_COMMAND} goose up
 
 ## run/bot: run the cmd/bot application
 .PHONY: run/bot
 run/bot:
-	@go run ./cmd/bot -db-dsn=${COIN_TAMER_DB_DSN}
+	@go run ./cmd/bot
+
+## gen-enum: Генерация enum. Необходимо указать путь path до файла с перечислением
+gen-enum:
+	@go tool go-enum -f $(path)
 
 # ==================================================================================== #
 # QUALITY CONTROL
@@ -96,6 +93,8 @@ audit:
 	go vet ./...
 	@echo 'Running tests...'
 	go test -race -vet=off ./...
+	@echo 'Running golangci-lint'
+	make lint
 
 ## lint: run golangci-lint
 .PHONY: lint

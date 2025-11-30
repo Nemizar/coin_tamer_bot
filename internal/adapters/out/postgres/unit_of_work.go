@@ -7,6 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/extidentityrepo"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/categoryrepo"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/transactionrepo"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/userrepo"
@@ -24,9 +26,10 @@ type UnitOfWork struct {
 	trackedAggregates []ddd.AggregateRoot
 
 	// Ленивая инициализация репозиториев
-	categoryRepo    ports.CategoryRepository
-	transactionRepo ports.TransactionRepository
-	userRepo        ports.UserRepository
+	categoryRepo         ports.CategoryRepository
+	transactionRepo      ports.TransactionRepository
+	userRepo             ports.UserRepository
+	externalIdentityRepo ports.ExternalIdentityRepository
 }
 
 func NewUnitOfWork(pool *sqlx.DB) (ports.UnitOfWork, error) {
@@ -144,4 +147,12 @@ func (u *UnitOfWork) TransactionRepository() ports.TransactionRepository {
 	}
 
 	return u.transactionRepo
+}
+
+func (u *UnitOfWork) ExternalIdentityRepository() ports.ExternalIdentityRepository {
+	if u.externalIdentityRepo == nil {
+		u.externalIdentityRepo = extidentityrepo.NewExternalIdentityRepository(u)
+	}
+
+	return u.externalIdentityRepo
 }

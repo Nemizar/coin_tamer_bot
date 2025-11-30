@@ -13,14 +13,10 @@ type UnitOfWork interface {
 	// Возвращает ошибку, если не удалось зафиксировать изменения.
 	Commit() error
 
-	// UserRepository возвращает репозиторий для работы с пользователями.
 	UserRepository() UserRepository
-
-	// CategoryRepository возвращает репозиторий для работы с категориями.
 	CategoryRepository() CategoryRepository
-
-	// TransactionRepository возвращает репозиторий для работы с транзакциями.
 	TransactionRepository() TransactionRepository
+	ExternalIdentityRepository() ExternalIdentityRepository
 
 	// RollbackUnlessCommitted откатывает текущую транзакцию, если она не была зафиксирована.
 	// Используется для безопасной отмены изменений в случае ошибки.
