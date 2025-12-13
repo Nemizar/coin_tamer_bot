@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS external_identities
     external_id text        NOT NULL,
     created_at  timestamptz NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX ux_external_identity
+    ON external_identities (provider, external_id);
 -- +goose StatementEnd
 
 -- +goose Down

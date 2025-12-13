@@ -41,6 +41,11 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 		}
 	}(uow)
 
+	err = uow.Begin()
+	if err != nil {
+		return err
+	}
+
 	existsUser, err := uow.UserRepository().FindByExternalProvider(command.Provider(), command.ChatID())
 	if err != nil {
 		if !errors.Is(err, errs.ErrObjectNotFound) {
@@ -58,11 +63,6 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 	}
 
 	exIdentity, err := identity.NewExternalIdentity(nu.ID(), command.Provider(), command.ChatID())
-	if err != nil {
-		return err
-	}
-
-	err = uow.Begin()
 	if err != nil {
 		return err
 	}
