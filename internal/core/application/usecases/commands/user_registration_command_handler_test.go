@@ -55,7 +55,7 @@ func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 	uowFactory, err := postgres.NewUnitOfWorkFactory(pool)
 	require.Nil(t, err)
 
-	cmd, err := commands.NewUserRegistrationCommand("test", 123)
+	cmd, err := commands.NewUserRegistrationCommand("test", "123", identity.ProviderTelegram)
 	assert.Nil(t, err)
 
 	handler := commands.NewUserRegistrationCommandHandler(nil, uowFactory)
@@ -74,13 +74,56 @@ func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 }
 
 func TestUserRegistrationCommandHandler_Failure_EmptyName(t *testing.T) {
-	cmd, err := commands.NewUserRegistrationCommand("", 123)
+	cmd, err := commands.NewUserRegistrationCommand("", "123", identity.ProviderTelegram)
 	assert.Nil(t, cmd)
 	assert.ErrorIs(t, err, errs.ErrValueIsRequired)
 }
 
 func TestUserRegistrationCommandHandler_Failure_EmptyTelegramChatID(t *testing.T) {
-	cmd, err := commands.NewUserRegistrationCommand("test", 0)
+	cmd, err := commands.NewUserRegistrationCommand("test", "0", identity.ProviderTelegram)
 	assert.Nil(t, cmd)
 	assert.ErrorIs(t, err, errs.ErrValueIsRequired)
+}
+
+func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
+	ctx, pool := setupTest(t)
+
+	uowFactory, err := postgres.NewUnitOfWorkFactory(pool)
+	require.NoError(t, err)
+
+	handler := commands.NewUserRegistrationCommandHandler(nil, uowFactory)
+
+	cmd, err := commands.NewUserRegistrationCommand(
+		"test",
+		"123",
+		identity.ProviderTelegram,
+	)
+	require.NoError(t, err)
+
+	// первый вызов
+	err = handler.Handle(ctx, cmd)
+	require.NoError(t, err)
+
+	// второй вызов (повторный /start)
+	err = handler.Handle(ctx, cmd)
+	require.NoError(t, err)
+
+	uow, err := uowFactory.New(ctx)
+	require.NoError(t, err)
+
+	// пользователь всё ещё один
+	user1, err := uow.UserRepository().
+		FindByExternalProvider(identity.ProviderTelegram, "123")
+	require.NoError(t, err)
+	require.NotNil(t, user1)
+
+	usersCount := 0
+	err = pool.GetContext(ctx, &usersCount, `SELECT COUNT(*) FROM users`)
+	require.NoError(t, err)
+	assert.Equal(t, 1, usersCount)
+
+	identitiesCount := 0
+	err = pool.GetContext(ctx, &identitiesCount, `SELECT COUNT(*) FROM external_identities`)
+	require.NoError(t, err)
+	assert.Equal(t, 1, identitiesCount)
 }

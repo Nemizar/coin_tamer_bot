@@ -1,46 +1,64 @@
-// Package main предоставляет точку входа для приложения бота Coin Tamer.
-// Выполняет инициализацию бота, настройку зависимостей и запуск обработки сообщений.
 package main
 
 import (
+	"context"
 	"fmt"
-	"log/slog"
-	"os"
+	"time"
 
+	"github.com/jmoiron/sqlx"
+
+	"github.com/Nemizar/coin_tamer_bot/internal/adapters/in/telegram"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/Nemizar/coin_tamer_bot/cmd"
 	"github.com/Nemizar/coin_tamer_bot/configs"
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl"
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl/handlers/slogpretty"
-	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
+)
+
+const (
+	setMaxIdleConns    = 2
+	setMaxOpenConns    = 5
+	setConnMaxLifetime = 10 * time.Minute
+	setConnMaxIdleTime = 10 * time.Minute
 )
 
 func main() {
 	cfg := configs.MustLoad()
 
-	logger := setupLogger(cfg)
+	db := mustOpenDB(cfg)
 
-	logger.Info(fmt.Sprintf("DB: %s@%s:%s\n", cfg.DBUser, cfg.DBHost, cfg.DBPort))
+	compositionRoot := cmd.NewCompositionRoot(cfg, db)
+	defer compositionRoot.CloseAll()
+
+	compositionRoot.Logger().Info("bot started")
+
+	startBot(compositionRoot, cfg.TelegramBotToken)
 }
 
-func setupLogger(c configs.Config) ports.Logger {
-	var log ports.Logger
-
-	if c.IsProd() {
-		log = sl.NewSlogLogger(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	} else {
-		log = setupPrettySlog()
+func startBot(compositionRoot *cmd.CompositionRoot, token string) {
+	bot, err := telegram.NewBot(compositionRoot.Logger(), token, compositionRoot.NewUserRegistrationCommandHandler())
+	if err != nil {
+		panic(fmt.Sprintf("create bot %s", err))
 	}
 
-	return log
+	bot.HandleUpdates(context.Background())
 }
 
-func setupPrettySlog() ports.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
+func mustOpenDB(cfg configs.Config) *sqlx.DB {
+	var (
+		db  *sqlx.DB
+		err error
+	)
+
+	db, err = sqlx.Open("pgx", cfg.DBDSNString())
+	if err != nil {
+		panic(fmt.Sprintf("build db client: %s", err))
 	}
 
-	handler := opts.NewPrettyHandler(os.Stdout)
+	db.SetMaxIdleConns(setMaxIdleConns)
+	db.SetMaxOpenConns(setMaxOpenConns)
+	db.SetConnMaxLifetime(setConnMaxLifetime)
+	db.SetConnMaxIdleTime(setConnMaxIdleTime)
 
-	return sl.NewSlogLogger(slog.New(handler))
+	return db
 }

@@ -2,31 +2,33 @@ package commands
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
+	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
-type TelegramUserRegistrationCommandHandler interface {
-	Handle(ctx context.Context, command TelegramUserRegistrationCommand) error
+type UserRegistrationCommandHandler interface {
+	Handle(ctx context.Context, command UserRegistrationCommand) error
 }
 
-var _ TelegramUserRegistrationCommandHandler = telegramUserRegistrationCommandHandler{}
+var _ UserRegistrationCommandHandler = userRegistrationCommandHandler{}
 
-type telegramUserRegistrationCommandHandler struct {
+type userRegistrationCommandHandler struct {
 	logger     ports.Logger
 	uowFactory ports.UnitOfWorkFactory
 }
 
-func NewUserRegistrationCommandHandler(logger ports.Logger, uowFactory ports.UnitOfWorkFactory) TelegramUserRegistrationCommandHandler {
-	return &telegramUserRegistrationCommandHandler{
+func NewUserRegistrationCommandHandler(logger ports.Logger, uowFactory ports.UnitOfWorkFactory) UserRegistrationCommandHandler {
+	return &userRegistrationCommandHandler{
 		logger:     logger,
 		uowFactory: uowFactory,
 	}
 }
 
-func (u telegramUserRegistrationCommandHandler) Handle(ctx context.Context, command TelegramUserRegistrationCommand) error {
+func (u userRegistrationCommandHandler) Handle(ctx context.Context, command UserRegistrationCommand) error {
 	uow, err := u.uowFactory.New(ctx)
 	if err != nil {
 		return err
@@ -39,12 +41,23 @@ func (u telegramUserRegistrationCommandHandler) Handle(ctx context.Context, comm
 		}
 	}(uow)
 
+	existsUser, err := uow.UserRepository().FindByExternalProvider(command.Provider(), command.ChatID())
+	if err != nil {
+		if !errors.Is(err, errs.ErrObjectNotFound) {
+			return err
+		}
+	}
+
+	if existsUser != nil {
+		return nil
+	}
+
 	nu, err := user.New(command.Username())
 	if err != nil {
 		return err
 	}
 
-	exIdentity, err := identity.NewExternalIdentity(nu.ID(), identity.ProviderTelegram, command.TelegramChatID())
+	exIdentity, err := identity.NewExternalIdentity(nu.ID(), command.Provider(), command.ChatID())
 	if err != nil {
 		return err
 	}

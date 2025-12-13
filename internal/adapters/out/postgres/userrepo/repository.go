@@ -2,12 +2,15 @@ package userrepo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
+	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
 type UserRepository struct {
@@ -39,6 +42,10 @@ func (u UserRepository) FindByExternalProvider(provider identity.Provider, exter
 	var repoModel Model
 	err := row.Scan(&repoModel.ID, &repoModel.Name, &repoModel.CreatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewObjectNotFoundError("user", externalID)
+		}
+
 		return nil, fmt.Errorf("user repo find by external provider: %w", err)
 	}
 

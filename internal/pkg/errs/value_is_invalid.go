@@ -18,6 +18,13 @@ func NewValueIsInvalidError(paramName string) *ValueIsInvalidError {
 	}
 }
 
+func NewValueIsInvalidErrorWithCause(paramName string, cause error) *ValueIsInvalidError {
+	return &ValueIsInvalidError{
+		ParamName: paramName,
+		Cause:     cause,
+	}
+}
+
 func (e *ValueIsInvalidError) Error() string {
 	if e.Cause != nil {
 		return fmt.Sprintf("%s: %s (cause: %v)", ErrValueIsInvalid, e.ParamName, e.Cause)
