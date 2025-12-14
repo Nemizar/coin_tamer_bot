@@ -9,11 +9,11 @@ import (
 )
 
 type TransactionRepository struct {
-	uow Tracker
+	tracker Tracker
 }
 
-func NewTransactionRepository(uow Tracker) ports.TransactionRepository {
-	return &TransactionRepository{uow: uow}
+func NewTransactionRepository(tracker Tracker) ports.TransactionRepository {
+	return &TransactionRepository{tracker: tracker}
 }
 
 func (t TransactionRepository) Add(ctx context.Context, transaction *transaction.Transaction) error {

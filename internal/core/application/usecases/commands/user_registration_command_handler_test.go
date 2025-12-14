@@ -12,10 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	cmd2 "github.com/Nemizar/coin_tamer_bot/cmd"
+	"github.com/Nemizar/coin_tamer_bot/configs"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
 	"github.com/Nemizar/coin_tamer_bot/internal/migrations"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/testcnts"
@@ -52,18 +54,19 @@ func setupTest(t *testing.T) (context.Context, *sqlx.DB) {
 func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 	ctx, pool := setupTest(t)
 
-	uowFactory, err := postgres.NewUnitOfWorkFactory(pool)
-	require.Nil(t, err)
+	cr := cmd2.NewCompositionRoot(configs.Config{}, pool)
+
+	uowFactory := cr.NewUnitOfWorkFactory()
 
 	cmd, err := commands.NewUserRegistrationCommand("test", "123", identity.ProviderTelegram)
 	assert.Nil(t, err)
 
-	handler := commands.NewUserRegistrationCommandHandler(nil, uowFactory)
+	handler := cr.NewUserRegistrationCommandHandler()
 
 	err = handler.Handle(ctx, cmd)
 	assert.Nil(t, err)
 
-	ei, err := uowFactory.New(ctx)
+	ei, err := uowFactory.New()
 	require.Nil(t, err)
 
 	u, err := ei.UserRepository().FindByExternalProvider(identity.ProviderTelegram, "123")
@@ -88,10 +91,11 @@ func TestUserRegistrationCommandHandler_Failure_EmptyTelegramChatID(t *testing.T
 func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
 	ctx, pool := setupTest(t)
 
-	uowFactory, err := postgres.NewUnitOfWorkFactory(pool)
-	require.NoError(t, err)
+	cr := cmd2.NewCompositionRoot(configs.Config{}, pool)
 
-	handler := commands.NewUserRegistrationCommandHandler(nil, uowFactory)
+	uowFactory := cr.NewUnitOfWorkFactory()
+
+	handler := cr.NewUserRegistrationCommandHandler()
 
 	cmd, err := commands.NewUserRegistrationCommand(
 		"test",
@@ -108,7 +112,7 @@ func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
 	err = handler.Handle(ctx, cmd)
 	require.NoError(t, err)
 
-	uow, err := uowFactory.New(ctx)
+	uow, err := uowFactory.New()
 	require.NoError(t, err)
 
 	// пользователь всё ещё один

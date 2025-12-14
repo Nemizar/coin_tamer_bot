@@ -1,25 +1,36 @@
 package postgres
 
 import (
-	"context"
-
 	"github.com/jmoiron/sqlx"
+
+	"github.com/Nemizar/coin_tamer_bot/internal/pkg/ddd"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
 type unitOfWorkFactory struct {
-	db *sqlx.DB
+	db      *sqlx.DB
+	mediatr ddd.Mediatr
+	logger  ports.Logger
 }
 
-func NewUnitOfWorkFactory(db *sqlx.DB) (ports.UnitOfWorkFactory, error) {
+func NewUnitOfWorkFactory(db *sqlx.DB, mediatr ddd.Mediatr, logger ports.Logger) (ports.UnitOfWorkFactory, error) {
 	if db == nil {
 		return nil, errs.NewValueIsRequiredError("db")
 	}
-	return &unitOfWorkFactory{db: db}, nil
+
+	if mediatr == nil {
+		return nil, errs.NewValueIsRequiredError("mediatr")
+	}
+
+	if logger == nil {
+		return nil, errs.NewValueIsRequiredError("logger")
+	}
+
+	return &unitOfWorkFactory{db: db, mediatr: mediatr, logger: logger}, nil
 }
 
-func (f *unitOfWorkFactory) New(ctx context.Context) (ports.UnitOfWork, error) {
-	return NewUnitOfWork(f.db)
+func (f *unitOfWorkFactory) New() (ports.UnitOfWork, error) {
+	return NewUnitOfWork(f.db, f.mediatr, f.logger)
 }

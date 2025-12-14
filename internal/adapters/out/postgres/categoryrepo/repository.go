@@ -9,11 +9,11 @@ import (
 )
 
 type CategoryRepository struct {
-	uow Tracker
+	tracker Tracker
 }
 
-func NewCategoryRepository(uow Tracker) ports.CategoryRepository {
-	return &CategoryRepository{uow: uow}
+func NewCategoryRepository(tracker Tracker) ports.CategoryRepository {
+	return &CategoryRepository{tracker: tracker}
 }
 
 func (c CategoryRepository) Create(ctx context.Context, category *category.Category) error {

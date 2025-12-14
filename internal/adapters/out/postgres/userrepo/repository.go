@@ -14,17 +14,19 @@ import (
 )
 
 type UserRepository struct {
-	uow Tracker
+	tracker Tracker
 }
 
-func NewUserRepository(uow Tracker) ports.UserRepository {
-	return &UserRepository{uow: uow}
+func NewUserRepository(tracker Tracker) ports.UserRepository {
+	return &UserRepository{tracker: tracker}
 }
 
 func (u UserRepository) Create(ctx context.Context, user *user.User) error {
+	u.tracker.Track(user)
+
 	stmt := `INSERT INTO users (id, name, created_at)
 			 VALUES ($1, $2, $3)`
-	_, err := u.uow.DB().ExecContext(ctx, stmt, user.ID(), user.Name(), user.CreatedAt())
+	_, err := u.tracker.DB().ExecContext(ctx, stmt, user.ID(), user.Name(), user.CreatedAt())
 	if err != nil {
 		return fmt.Errorf("user repo insert: %w", err)
 	}
@@ -37,7 +39,7 @@ func (u UserRepository) FindByExternalProvider(provider identity.Provider, exter
 				FROM users u
 				INNER JOIN external_identities ei ON u.id = ei.user_id
 				WHERE ei.external_id = $1 AND ei.provider = $2`
-	row := u.uow.DB().QueryRowContext(context.Background(), stmt, externalID, provider)
+	row := u.tracker.DB().QueryRowContext(context.Background(), stmt, externalID, provider)
 
 	var repoModel Model
 	err := row.Scan(&repoModel.ID, &repoModel.Name, &repoModel.CreatedAt)

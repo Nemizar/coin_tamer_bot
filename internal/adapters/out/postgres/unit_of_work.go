@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -24,6 +25,8 @@ type UnitOfWork struct {
 	tx                *sqlx.Tx
 	committed         bool
 	trackedAggregates []ddd.AggregateRoot
+	mediatr           ddd.Mediatr
+	logger            ports.Logger
 
 	// Ленивая инициализация репозиториев
 	categoryRepo         ports.CategoryRepository
@@ -32,21 +35,28 @@ type UnitOfWork struct {
 	externalIdentityRepo ports.ExternalIdentityRepository
 }
 
-func NewUnitOfWork(pool *sqlx.DB) (ports.UnitOfWork, error) {
+func NewUnitOfWork(pool *sqlx.DB, mediatr ddd.Mediatr, logger ports.Logger) (ports.UnitOfWork, error) {
 	if pool == nil {
 		return nil, errs.NewValueIsRequiredError("pool")
 	}
 
-	return &UnitOfWork{pool: pool}, nil
+	if mediatr == nil {
+		return nil, errs.NewValueIsRequiredError("mediatr")
+	}
+
+	if logger == nil {
+		return nil, errs.NewValueIsRequiredError("logger")
+	}
+
+	return &UnitOfWork{pool: pool, mediatr: mediatr, logger: logger}, nil
 }
 
-// Begin начинает транзакцию. Возвращает ошибку, если не удалось.
-func (u *UnitOfWork) Begin() error {
+func (u *UnitOfWork) Begin(ctx context.Context) error {
 	if u.tx != nil {
 		return fmt.Errorf("transaction already started")
 	}
 
-	tx, err := u.pool.Beginx()
+	tx, err := u.pool.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -56,13 +66,16 @@ func (u *UnitOfWork) Begin() error {
 	return nil
 }
 
-// Commit фиксирует транзакцию.
-func (u *UnitOfWork) Commit() error {
+func (u *UnitOfWork) Commit(ctx context.Context) error {
 	if u.tx == nil {
 		return errs.NewValueIsRequiredError("cannot commit without transaction")
 	}
 	if u.committed {
 		return fmt.Errorf("transaction already committed")
+	}
+
+	if err := u.publishDomainEvents(ctx); err != nil {
+		return err
 	}
 
 	err := u.tx.Commit()
@@ -75,7 +88,6 @@ func (u *UnitOfWork) Commit() error {
 	return nil
 }
 
-// RollbackUnlessCommitted откатывает, если не был сделан коммит.
 func (u *UnitOfWork) RollbackUnlessCommitted() error {
 	if u.tx == nil || u.committed {
 		return nil // nothing to rollback
@@ -91,32 +103,26 @@ func (u *UnitOfWork) RollbackUnlessCommitted() error {
 	return nil
 }
 
-// Tx возвращает текущую транзакцию для репозиториев.
 func (u *UnitOfWork) Tx() *sqlx.Tx {
 	return u.tx
 }
 
-// InTx возвращает true, если транзакция активна.
 func (u *UnitOfWork) InTx() bool {
 	return u.tx != nil
 }
 
-// DB возвращает соединение (для чтения вне транзакции).
 func (u *UnitOfWork) DB() *sqlx.DB {
 	return u.pool
 }
 
-// Track добавляет агрегат для отслеживания (например, для событий).
 func (u *UnitOfWork) Track(agg ddd.AggregateRoot) {
 	u.trackedAggregates = append(u.trackedAggregates, agg)
 }
 
-// TrackedAggregates возвращает отслеживаемые агрегаты (например, для публикации событий ПОСЛЕ коммита).
 func (u *UnitOfWork) TrackedAggregates() []ddd.AggregateRoot {
 	return u.trackedAggregates
 }
 
-// clearTx сбрасывает транзакцию, но НЕ очищает trackedAggregates — это должно быть отдельно!
 func (u *UnitOfWork) clearTx() {
 	u.tx = nil
 	u.committed = false
@@ -155,4 +161,21 @@ func (u *UnitOfWork) ExternalIdentityRepository() ports.ExternalIdentityReposito
 	}
 
 	return u.externalIdentityRepo
+}
+
+func (u *UnitOfWork) publishDomainEvents(ctx context.Context) error {
+	for _, aggregate := range u.trackedAggregates {
+		for _, event := range aggregate.GetDomainEvents() {
+			err := u.mediatr.Publish(ctx, event)
+			if err != nil {
+				u.logger.Error("publish event", "err", err)
+
+				continue
+			}
+		}
+
+		aggregate.ClearDomainEvents()
+	}
+
+	return nil
 }

@@ -9,17 +9,17 @@ import (
 )
 
 type ExternalIdentityRepository struct {
-	uow Tracker
+	tracker Tracker
 }
 
-func NewExternalIdentityRepository(uow Tracker) ports.ExternalIdentityRepository {
-	return &ExternalIdentityRepository{uow: uow}
+func NewExternalIdentityRepository(tracker Tracker) ports.ExternalIdentityRepository {
+	return &ExternalIdentityRepository{tracker: tracker}
 }
 
 func (e ExternalIdentityRepository) Add(ctx context.Context, ei *identity.ExternalIdentity) error {
 	stmt := `INSERT INTO external_identities (id, user_id, provider, external_id)
 				 VALUES ($1, $2, $3, $4)`
-	_, err := e.uow.DB().ExecContext(ctx, stmt, ei.ID(), ei.UserID(), ei.Provider(), ei.ExternalID())
+	_, err := e.tracker.DB().ExecContext(ctx, stmt, ei.ID(), ei.UserID(), ei.Provider(), ei.ExternalID())
 	if err != nil {
 		return fmt.Errorf("external identity repo insert: %w", err)
 	}

@@ -21,15 +21,23 @@ type userRegistrationCommandHandler struct {
 	uowFactory ports.UnitOfWorkFactory
 }
 
-func NewUserRegistrationCommandHandler(logger ports.Logger, uowFactory ports.UnitOfWorkFactory) UserRegistrationCommandHandler {
+func NewUserRegistrationCommandHandler(logger ports.Logger, uowFactory ports.UnitOfWorkFactory) (UserRegistrationCommandHandler, error) {
+	if logger == nil {
+		return nil, errs.NewValueIsRequiredError("logger")
+	}
+
+	if uowFactory == nil {
+		return nil, errs.NewValueIsRequiredError("uowFactory")
+	}
+
 	return &userRegistrationCommandHandler{
 		logger:     logger,
 		uowFactory: uowFactory,
-	}
+	}, nil
 }
 
 func (u userRegistrationCommandHandler) Handle(ctx context.Context, command UserRegistrationCommand) error {
-	uow, err := u.uowFactory.New(ctx)
+	uow, err := u.uowFactory.New()
 	if err != nil {
 		return err
 	}
@@ -41,7 +49,7 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 		}
 	}(uow)
 
-	err = uow.Begin()
+	err = uow.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -77,5 +85,5 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 		return err
 	}
 
-	return uow.Commit()
+	return uow.Commit(ctx)
 }
