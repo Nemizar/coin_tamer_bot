@@ -3,7 +3,7 @@
 
 // Built By: go install
 
-package identity
+package user
 
 import (
 	"errors"

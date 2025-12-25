@@ -7,8 +7,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/application/eventshandler"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+
+	"github.com/Nemizar/coin_tamer_bot/internal/core/application/eventshandler"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/ddd"
 
 	"github.com/Nemizar/coin_tamer_bot/configs"
@@ -68,13 +69,13 @@ func (cr *CompositionRoot) NewUserRegistrationCommandHandler() commands.UserRegi
 
 func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
 	mediatr := ddd.NewMediatr()
-	mediatr.Subscribe(cr.NewUserCreatedDomainEventHandler(), user.NewEmptyCreateEvent())
+	mediatr.Subscribe(cr.NewExternalIdentityAddedDomainEventHandler(), user.NewEmptyExternalIdentityAddedEvent())
 
 	return mediatr
 }
 
-func (cr *CompositionRoot) NewUserCreatedDomainEventHandler() ddd.EventHandler {
-	return eventshandler.NewUserCreatedEventHandler()
+func (cr *CompositionRoot) NewExternalIdentityAddedDomainEventHandler() ddd.EventHandler {
+	return eventshandler.NewExternalIdentityAddedEventHandler()
 }
 
 func (cr *CompositionRoot) Logger() ports.Logger {

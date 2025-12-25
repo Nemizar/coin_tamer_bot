@@ -12,10 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+
 	cmd2 "github.com/Nemizar/coin_tamer_bot/cmd"
 	"github.com/Nemizar/coin_tamer_bot/configs"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
@@ -58,7 +59,7 @@ func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 
 	uowFactory := cr.NewUnitOfWorkFactory()
 
-	cmd, err := commands.NewUserRegistrationCommand("test", "123", identity.ProviderTelegram)
+	cmd, err := commands.NewUserRegistrationCommand("test", "123", user.ProviderTelegram)
 	assert.Nil(t, err)
 
 	handler := cr.NewUserRegistrationCommandHandler()
@@ -69,7 +70,7 @@ func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 	ei, err := uowFactory.New()
 	require.Nil(t, err)
 
-	u, err := ei.UserRepository().FindByExternalProvider(identity.ProviderTelegram, "123")
+	u, err := ei.UserRepository().FindByExternalProvider(user.ProviderTelegram, "123")
 	require.Nil(t, err)
 	require.NotNil(t, u)
 	assert.Equal(t, "test", u.Name())
@@ -77,13 +78,13 @@ func TestUserRegistrationCommandHandler_Success(t *testing.T) {
 }
 
 func TestUserRegistrationCommandHandler_Failure_EmptyName(t *testing.T) {
-	cmd, err := commands.NewUserRegistrationCommand("", "123", identity.ProviderTelegram)
+	cmd, err := commands.NewUserRegistrationCommand("", "123", user.ProviderTelegram)
 	assert.Nil(t, cmd)
 	assert.ErrorIs(t, err, errs.ErrValueIsRequired)
 }
 
 func TestUserRegistrationCommandHandler_Failure_EmptyTelegramChatID(t *testing.T) {
-	cmd, err := commands.NewUserRegistrationCommand("test", "0", identity.ProviderTelegram)
+	cmd, err := commands.NewUserRegistrationCommand("test", "0", user.ProviderTelegram)
 	assert.Nil(t, cmd)
 	assert.ErrorIs(t, err, errs.ErrValueIsRequired)
 }
@@ -100,7 +101,7 @@ func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
 	cmd, err := commands.NewUserRegistrationCommand(
 		"test",
 		"123",
-		identity.ProviderTelegram,
+		user.ProviderTelegram,
 	)
 	require.NoError(t, err)
 
@@ -117,7 +118,7 @@ func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
 
 	// пользователь всё ещё один
 	user1, err := uow.UserRepository().
-		FindByExternalProvider(identity.ProviderTelegram, "123")
+		FindByExternalProvider(user.ProviderTelegram, "123")
 	require.NoError(t, err)
 	require.NotNil(t, user1)
 

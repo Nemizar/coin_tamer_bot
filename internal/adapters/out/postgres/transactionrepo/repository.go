@@ -6,14 +6,19 @@ import (
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/transaction"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
+	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
 type TransactionRepository struct {
 	tracker Tracker
 }
 
-func NewTransactionRepository(tracker Tracker) ports.TransactionRepository {
-	return &TransactionRepository{tracker: tracker}
+func NewTransactionRepository(tracker Tracker) (ports.TransactionRepository, error) {
+	if tracker == nil {
+		return nil, errs.NewValueIsRequiredError("tracker")
+	}
+
+	return &TransactionRepository{tracker: tracker}, nil
 }
 
 func (t TransactionRepository) Add(ctx context.Context, transaction *transaction.Transaction) error {

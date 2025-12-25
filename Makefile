@@ -21,7 +21,7 @@ help:
 # ==================================================================================== #
 
 ## init: Сборка рабочего окружения
-init: confirm down-clear build up
+init: confirm down-clear build up migrate-up
 
 ## up: Запуск контейнеров
 up:

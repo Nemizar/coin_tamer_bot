@@ -1,4 +1,4 @@
-package identity
+package user
 
 // Provider представляет тип внешнего идентификатора чата
 // ENUM(telegram)

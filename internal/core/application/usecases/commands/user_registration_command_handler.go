@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
@@ -65,22 +64,12 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 		return nil
 	}
 
-	nu, err := user.New(command.Username())
-	if err != nil {
-		return err
-	}
-
-	exIdentity, err := identity.NewExternalIdentity(nu.ID(), command.Provider(), command.ChatID())
+	nu, err := user.New(command.Username(), command.ChatID(), command.Provider())
 	if err != nil {
 		return err
 	}
 
 	err = uow.UserRepository().Create(ctx, nu)
-	if err != nil {
-		return err
-	}
-
-	err = uow.ExternalIdentityRepository().Add(ctx, exIdentity)
 	if err != nil {
 		return err
 	}

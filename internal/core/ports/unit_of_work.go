@@ -10,7 +10,8 @@ type UnitOfWork interface {
 	UserRepository() UserRepository
 	CategoryRepository() CategoryRepository
 	TransactionRepository() TransactionRepository
-	ExternalIdentityRepository() ExternalIdentityRepository
 
 	RollbackUnlessCommitted() error
+
+	Logger() Logger
 }

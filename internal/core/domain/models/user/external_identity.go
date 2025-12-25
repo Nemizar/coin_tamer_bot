@@ -1,20 +1,23 @@
-package identity
+package user
 
 import (
+	"time"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/ddd"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
 type ExternalIdentity struct {
-	baseEntity *ddd.BaseEntity[shared.ID]
-	userID     shared.ID
-	provider   Provider
-	externalID string
+	baseAggregate *ddd.BaseEntity[shared.ID]
+	userID        shared.ID
+	provider      Provider
+	externalID    string
+	createdAt     time.Time
 }
 
 func (e ExternalIdentity) ID() shared.ID {
-	return e.baseEntity.ID()
+	return e.baseAggregate.ID()
 }
 
 func (e ExternalIdentity) UserID() shared.ID {
@@ -29,6 +32,10 @@ func (e ExternalIdentity) ExternalID() string {
 	return e.externalID
 }
 
+func (e ExternalIdentity) GetCreatedAt() time.Time {
+	return e.createdAt
+}
+
 func NewExternalIdentity(userID shared.ID, provider Provider, externalID string) (*ExternalIdentity, error) {
 	if !provider.IsValid() {
 		return nil, errs.NewValueIsInvalidError("provider")
@@ -38,10 +45,13 @@ func NewExternalIdentity(userID shared.ID, provider Provider, externalID string)
 		return nil, errs.NewValueIsRequiredError("externalID")
 	}
 
-	return &ExternalIdentity{
-		baseEntity: ddd.NewBaseEntity(shared.NewID()),
-		userID:     userID,
-		provider:   provider,
-		externalID: externalID,
-	}, nil
+	ei := ExternalIdentity{
+		baseAggregate: ddd.NewBaseEntity(shared.NewID()),
+		userID:        userID,
+		provider:      provider,
+		externalID:    externalID,
+		createdAt:     time.Now(),
+	}
+
+	return &ei, nil
 }

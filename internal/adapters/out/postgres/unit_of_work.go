@@ -8,11 +8,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/extidentityrepo"
-
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/categoryrepo"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/transactionrepo"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres/userrepo"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/ddd"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
@@ -29,10 +28,9 @@ type UnitOfWork struct {
 	logger            ports.Logger
 
 	// Ленивая инициализация репозиториев
-	categoryRepo         ports.CategoryRepository
-	transactionRepo      ports.TransactionRepository
-	userRepo             ports.UserRepository
-	externalIdentityRepo ports.ExternalIdentityRepository
+	categoryRepo    ports.CategoryRepository
+	transactionRepo ports.TransactionRepository
+	userRepo        ports.UserRepository
 }
 
 func NewUnitOfWork(pool *sqlx.DB, mediatr ddd.Mediatr, logger ports.Logger) (ports.UnitOfWork, error) {
@@ -48,7 +46,28 @@ func NewUnitOfWork(pool *sqlx.DB, mediatr ddd.Mediatr, logger ports.Logger) (por
 		return nil, errs.NewValueIsRequiredError("logger")
 	}
 
-	return &UnitOfWork{pool: pool, mediatr: mediatr, logger: logger}, nil
+	uow := &UnitOfWork{pool: pool, mediatr: mediatr, logger: logger}
+
+	categoryRepo, err := categoryrepo.NewCategoryRepository(uow)
+	if err != nil {
+		return nil, err
+	}
+
+	transactionRepo, err := transactionrepo.NewTransactionRepository(uow)
+	if err != nil {
+		return nil, err
+	}
+
+	userRepo, err := userrepo.NewUserRepository(uow)
+	if err != nil {
+		return nil, err
+	}
+
+	uow.categoryRepo = categoryRepo
+	uow.transactionRepo = transactionRepo
+	uow.userRepo = userRepo
+
+	return uow, nil
 }
 
 func (u *UnitOfWork) Begin(ctx context.Context) error {
@@ -129,38 +148,16 @@ func (u *UnitOfWork) clearTx() {
 	// НЕ трогаем trackedAggregates — их очистка должна быть после обработки событий!
 }
 
-// --- Репозитории (ленивая инициализация) ---
-
 func (u *UnitOfWork) CategoryRepository() ports.CategoryRepository {
-	if u.categoryRepo == nil {
-		u.categoryRepo = categoryrepo.NewCategoryRepository(u)
-	}
-
 	return u.categoryRepo
 }
 
 func (u *UnitOfWork) UserRepository() ports.UserRepository {
-	if u.userRepo == nil {
-		u.userRepo = userrepo.NewUserRepository(u)
-	}
-
 	return u.userRepo
 }
 
 func (u *UnitOfWork) TransactionRepository() ports.TransactionRepository {
-	if u.transactionRepo == nil {
-		u.transactionRepo = transactionrepo.NewTransactionRepository(u)
-	}
-
 	return u.transactionRepo
-}
-
-func (u *UnitOfWork) ExternalIdentityRepository() ports.ExternalIdentityRepository {
-	if u.externalIdentityRepo == nil {
-		u.externalIdentityRepo = extidentityrepo.NewExternalIdentityRepository(u)
-	}
-
-	return u.externalIdentityRepo
 }
 
 func (u *UnitOfWork) publishDomainEvents(ctx context.Context) error {
@@ -178,4 +175,8 @@ func (u *UnitOfWork) publishDomainEvents(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (u *UnitOfWork) Logger() ports.Logger {
+	return u.logger
 }

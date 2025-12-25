@@ -3,20 +3,20 @@ package commands
 import (
 	"strings"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
 type UserRegistrationCommand interface {
 	Username() string
 	ChatID() string
-	Provider() identity.Provider
+	Provider() user.Provider
 }
 
 type userRegistrationCommand struct {
 	username string
 	chatID   string
-	provider identity.Provider
+	provider user.Provider
 }
 
 func (u userRegistrationCommand) Username() string {
@@ -27,11 +27,11 @@ func (u userRegistrationCommand) ChatID() string {
 	return u.chatID
 }
 
-func (u userRegistrationCommand) Provider() identity.Provider {
+func (u userRegistrationCommand) Provider() user.Provider {
 	return u.provider
 }
 
-func NewUserRegistrationCommand(username string, chatID string, provider identity.Provider) (UserRegistrationCommand, error) {
+func NewUserRegistrationCommand(username string, chatID string, provider user.Provider) (UserRegistrationCommand, error) {
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return nil, errs.NewValueIsRequiredError("username")

@@ -11,3 +11,5 @@ type Model struct {
 	Name      string
 	CreatedAt time.Time
 }
+
+// type ExternalProviderModel

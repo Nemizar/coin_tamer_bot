@@ -1,4 +1,4 @@
-package identity_test
+package user_test
 
 import (
 	"testing"
@@ -6,7 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
@@ -15,14 +16,14 @@ func TestNewExternalIdentity(t *testing.T) {
 	tests := []struct {
 		name       string
 		userID     shared.ID
-		provider   identity.Provider
+		provider   user.Provider
 		externalID string
 		wantError  error
 	}{
 		{
 			name:       "Валидный внешний идентификатор",
 			userID:     shared.NewID(),
-			provider:   identity.ProviderTelegram,
+			provider:   user.ProviderTelegram,
 			externalID: "123456789",
 			wantError:  nil,
 		},
@@ -36,7 +37,7 @@ func TestNewExternalIdentity(t *testing.T) {
 		{
 			name:       "Пустой externalID",
 			userID:     shared.NewID(),
-			provider:   identity.ProviderTelegram,
+			provider:   user.ProviderTelegram,
 			externalID: "",
 			wantError:  errs.ErrValueIsRequired,
 		},
@@ -44,7 +45,7 @@ func TestNewExternalIdentity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exIdentity, err := identity.NewExternalIdentity(tt.userID, tt.provider, tt.externalID)
+			exIdentity, err := user.NewExternalIdentity(tt.userID, tt.provider, tt.externalID)
 
 			if tt.wantError != nil {
 				require.Error(t, err)
@@ -65,10 +66,10 @@ func TestNewExternalIdentity(t *testing.T) {
 
 func TestExternalIdentity_Getters(t *testing.T) {
 	userID := shared.NewID()
-	provider := identity.ProviderTelegram
+	provider := user.ProviderTelegram
 	externalID := "987654321"
 
-	ei, err := identity.NewExternalIdentity(userID, provider, externalID)
+	ei, err := user.NewExternalIdentity(userID, provider, externalID)
 	require.NoError(t, err)
 
 	t.Run("Проверка геттеров", func(t *testing.T) {

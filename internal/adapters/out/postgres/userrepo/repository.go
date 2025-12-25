@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/shared"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
@@ -17,24 +16,51 @@ type UserRepository struct {
 	tracker Tracker
 }
 
-func NewUserRepository(tracker Tracker) ports.UserRepository {
-	return &UserRepository{tracker: tracker}
+func NewUserRepository(tracker Tracker) (ports.UserRepository, error) {
+	if tracker == nil {
+		return nil, errs.NewValueIsRequiredError("tracker")
+	}
+
+	return &UserRepository{tracker: tracker}, nil
 }
 
-func (u UserRepository) Create(ctx context.Context, user *user.User) error {
-	u.tracker.Track(user)
+func (u UserRepository) Create(ctx context.Context, us *user.User) error {
+	u.tracker.Track(us)
+
+	if !u.tracker.InTx() {
+		err := u.tracker.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("user repo begin: %w", err)
+		}
+
+		defer func(tracker Tracker, ctx context.Context) {
+			err = tracker.Commit(ctx)
+			if err != nil {
+				tracker.Logger().Error("user repo commit", "err", err)
+			}
+		}(u.tracker, ctx)
+	}
 
 	stmt := `INSERT INTO users (id, name, created_at)
 			 VALUES ($1, $2, $3)`
-	_, err := u.tracker.DB().ExecContext(ctx, stmt, user.ID(), user.Name(), user.CreatedAt())
+	_, err := u.tracker.Tx().ExecContext(ctx, stmt, us.ID(), us.Name(), us.CreatedAt())
 	if err != nil {
 		return fmt.Errorf("user repo insert: %w", err)
+	}
+
+	for _, ei := range us.GetExternalIdentities() {
+		stmt = `INSERT INTO external_identities (id, user_id, provider, external_id, created_at)
+			VALUES ($1, $2, $3, $4, $5)`
+		_, err = u.tracker.Tx().ExecContext(ctx, stmt, ei.ID(), ei.UserID(), ei.Provider(), ei.ExternalID(), ei.GetCreatedAt())
+		if err != nil {
+			return fmt.Errorf("user repo insert external identity: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func (u UserRepository) FindByExternalProvider(provider identity.Provider, externalID string) (*user.User, error) {
+func (u UserRepository) FindByExternalProvider(provider user.Provider, externalID string) (*user.User, error) {
 	stmt := `SELECT u.id, name, u.created_at
 				FROM users u
 				INNER JOIN external_identities ei ON u.id = ei.user_id

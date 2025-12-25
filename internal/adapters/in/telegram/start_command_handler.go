@@ -6,10 +6,11 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/identity"
 )
 
 type startCommandHandler struct {
@@ -32,7 +33,7 @@ func (h *startCommandHandler) handle(ctx context.Context, update tgbotapi.Update
 	cmd, err := commands.NewUserRegistrationCommand(
 		update.Message.From.UserName,
 		strconv.FormatInt(update.Message.Chat.ID, 10),
-		identity.ProviderTelegram,
+		user.ProviderTelegram,
 	)
 
 	if err != nil {

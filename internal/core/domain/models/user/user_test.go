@@ -18,28 +18,38 @@ func TestNewUser(t *testing.T) {
 	tests := []struct {
 		name      string
 		username  string
+		chatID    string
 		wantError error
 	}{
 		{
 			name:      "Валидный пользователь",
 			username:  "Alice",
 			wantError: nil,
+			chatID:    "1",
 		},
 		{
 			name:      "Невалидное имя - пустое",
 			username:  "",
+			chatID:    "1",
 			wantError: errs.ErrValueIsRequired,
 		},
 		{
 			name:      "Невалидное имя - состоит из пробелов (пустое)",
 			username:  "   ",
+			chatID:    "1",
+			wantError: errs.ErrValueIsRequired,
+		},
+		{
+			name:      "Невалидный идентификатор чата",
+			username:  "Alice",
+			chatID:    "",
 			wantError: errs.ErrValueIsRequired,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u, err := user.New(tt.username)
+			u, err := user.New(tt.username, tt.chatID, user.ProviderTelegram)
 
 			if tt.wantError != nil {
 				require.Error(t, err)
@@ -53,6 +63,10 @@ func TestNewUser(t *testing.T) {
 			assert.Equal(t, tt.username, u.Name())
 			assert.NotEqual(t, shared.ID{}, u.ID())
 			assert.WithinDuration(t, time.Now(), u.CreatedAt(), time.Second)
+			assert.NotEmpty(t, u.GetExternalIdentities())
+			assert.Equal(t, "1", u.GetExternalIdentities()[0].ExternalID())
+			assert.Equal(t, user.ProviderTelegram, u.GetExternalIdentities()[0].Provider())
+			assert.Equal(t, u.ID(), u.GetExternalIdentities()[0].UserID())
 		})
 	}
 }
