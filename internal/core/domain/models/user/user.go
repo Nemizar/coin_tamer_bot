@@ -10,10 +10,10 @@ import (
 )
 
 type User struct {
-	baseAggregate      *ddd.BaseAggregate[shared.ID]
-	createdAt          time.Time
-	name               string
-	externalIdentities []*ExternalIdentity
+	baseAggregate    *ddd.BaseAggregate[shared.ID]
+	createdAt        time.Time
+	name             string
+	externalIdentity *ExternalIdentity
 }
 
 func New(name string, chatID string, provider Provider) (*User, error) {
@@ -26,10 +26,9 @@ func New(name string, chatID string, provider Provider) (*User, error) {
 	}
 
 	u := User{
-		baseAggregate:      ddd.NewBaseAggregate(shared.NewID()),
-		createdAt:          time.Now(),
-		name:               name,
-		externalIdentities: make([]*ExternalIdentity, 0),
+		baseAggregate: ddd.NewBaseAggregate(shared.NewID()),
+		createdAt:     time.Now(),
+		name:          name,
 	}
 
 	ei, err := NewExternalIdentity(u.ID(), provider, chatID)
@@ -41,6 +40,8 @@ func New(name string, chatID string, provider Provider) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	u.RaiseDomainEvent(NewRegisterEvent(&u))
 
 	return &u, nil
 }
@@ -54,6 +55,10 @@ func Restore(id shared.ID, name string, createdAt time.Time) *User {
 }
 
 func (u *User) AddExternalIdentity(externalIdentity *ExternalIdentity) error {
+	if u.externalIdentity != nil {
+		return errs.NewValueIsInvalidError("externalIdentity")
+	}
+
 	if externalIdentity == nil {
 		return errs.NewValueIsRequiredError("externalIdentity")
 	}
@@ -62,15 +67,7 @@ func (u *User) AddExternalIdentity(externalIdentity *ExternalIdentity) error {
 		return errs.NewValueIsInvalidError("externalIdentity.UserID()")
 	}
 
-	for _, ei := range u.externalIdentities {
-		if ei.Provider() == externalIdentity.Provider() && ei.ExternalID() == externalIdentity.ExternalID() {
-			return errs.NewValueIsInvalidError("externalIdentity.Provider()")
-		}
-	}
-
-	u.externalIdentities = append(u.externalIdentities, externalIdentity)
-
-	u.RaiseDomainEvent(NewExternalIdentityAddedEvent(externalIdentity))
+	u.externalIdentity = externalIdentity
 
 	return nil
 }
@@ -87,8 +84,8 @@ func (u *User) Name() string {
 	return u.name
 }
 
-func (u *User) GetExternalIdentities() []*ExternalIdentity {
-	return u.externalIdentities
+func (u *User) GetExternalIdentity() *ExternalIdentity {
+	return u.externalIdentity
 }
 
 func (u *User) Equals(other *User) bool {

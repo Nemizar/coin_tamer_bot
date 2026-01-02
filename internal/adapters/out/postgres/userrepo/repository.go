@@ -48,24 +48,23 @@ func (u UserRepository) Create(ctx context.Context, us *user.User) error {
 		return fmt.Errorf("user repo insert: %w", err)
 	}
 
-	for _, ei := range us.GetExternalIdentities() {
-		stmt = `INSERT INTO external_identities (id, user_id, provider, external_id, created_at)
+	ei := us.GetExternalIdentity()
+	stmt = `INSERT INTO external_identities (id, user_id, provider, external_id, created_at)
 			VALUES ($1, $2, $3, $4, $5)`
-		_, err = u.tracker.Tx().ExecContext(ctx, stmt, ei.ID(), ei.UserID(), ei.Provider(), ei.ExternalID(), ei.GetCreatedAt())
-		if err != nil {
-			return fmt.Errorf("user repo insert external identity: %w", err)
-		}
+	_, err = u.tracker.Tx().ExecContext(ctx, stmt, ei.ID(), ei.UserID(), ei.Provider(), ei.ExternalID(), ei.GetCreatedAt())
+	if err != nil {
+		return fmt.Errorf("user repo insert external identity: %w", err)
 	}
 
 	return nil
 }
 
-func (u UserRepository) FindByExternalProvider(provider user.Provider, externalID string) (*user.User, error) {
+func (u UserRepository) FindByExternalProvider(ctx context.Context, provider user.Provider, externalID string) (*user.User, error) {
 	stmt := `SELECT u.id, name, u.created_at
 				FROM users u
 				INNER JOIN external_identities ei ON u.id = ei.user_id
 				WHERE ei.external_id = $1 AND ei.provider = $2`
-	row := u.tracker.DB().QueryRowContext(context.Background(), stmt, externalID, provider)
+	row := u.tracker.DB().QueryRowContext(ctx, stmt, externalID, provider)
 
 	var repoModel Model
 	err := row.Scan(&repoModel.ID, &repoModel.Name, &repoModel.CreatedAt)

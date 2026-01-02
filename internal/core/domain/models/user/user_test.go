@@ -63,10 +63,10 @@ func TestNewUser(t *testing.T) {
 			assert.Equal(t, tt.username, u.Name())
 			assert.NotEqual(t, shared.ID{}, u.ID())
 			assert.WithinDuration(t, time.Now(), u.CreatedAt(), time.Second)
-			assert.NotEmpty(t, u.GetExternalIdentities())
-			assert.Equal(t, "1", u.GetExternalIdentities()[0].ExternalID())
-			assert.Equal(t, user.ProviderTelegram, u.GetExternalIdentities()[0].Provider())
-			assert.Equal(t, u.ID(), u.GetExternalIdentities()[0].UserID())
+			assert.NotEmpty(t, u.GetExternalIdentity())
+			assert.Equal(t, "1", u.GetExternalIdentity().ExternalID())
+			assert.Equal(t, user.ProviderTelegram, u.GetExternalIdentity().Provider())
+			assert.Equal(t, u.ID(), u.GetExternalIdentity().UserID())
 		})
 	}
 }

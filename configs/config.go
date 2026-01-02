@@ -3,7 +3,7 @@ package configs
 import "fmt"
 
 type Config struct {
-	ENV string `envconfig:"ENV"`
+	ENV string `envconfig:"ENV" default:"dev"`
 
 	DBHost  string `envconfig:"DB_HOST"`
 	DBPort  string `envconfig:"DB_PORT"`
@@ -17,6 +17,10 @@ type Config struct {
 
 func (c Config) IsProd() bool {
 	return c.ENV == "prod"
+}
+
+func (c Config) IsDev() bool {
+	return !c.IsProd()
 }
 
 func (c Config) DBDSNString() string {

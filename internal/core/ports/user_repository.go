@@ -8,5 +8,5 @@ import (
 
 type UserRepository interface {
 	Create(ctx context.Context, user *user.User) error
-	FindByExternalProvider(provider user.Provider, externalID string) (*user.User, error)
+	FindByExternalProvider(ctx context.Context, provider user.Provider, externalID string) (*user.User, error)
 }

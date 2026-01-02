@@ -31,6 +31,7 @@ func main() {
 	defer compositionRoot.CloseAll()
 
 	compositionRoot.Logger().Info("bot started")
+	compositionRoot.Logger().Info("ENV", "env", cfg.ENV)
 
 	startBot(compositionRoot, cfg.TelegramBotToken)
 }

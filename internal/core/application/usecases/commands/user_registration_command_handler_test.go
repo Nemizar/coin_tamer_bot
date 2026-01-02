@@ -2,79 +2,77 @@ package commands_test
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+	"github.com/Nemizar/coin_tamer_bot/mocks/core/portsmocks"
 
-	cmd2 "github.com/Nemizar/coin_tamer_bot/cmd"
-	"github.com/Nemizar/coin_tamer_bot/configs"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
-	"github.com/Nemizar/coin_tamer_bot/internal/migrations"
-	"github.com/Nemizar/coin_tamer_bot/internal/pkg/testcnts"
 )
 
-func setupTest(t *testing.T) (context.Context, *sqlx.DB) {
-	ctx := context.Background()
-
-	postgresContainer, dsn, err := testcnts.StartPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pool, err := sqlx.Open("pgx", dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	goose.SetBaseFS(migrations.FS)
-	if err := goose.Up(pool.DB, "."); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
-	}
-
-	t.Cleanup(func() {
-		err := pool.Close()
-		assert.NoError(t, err)
-
-		err = postgresContainer.Terminate(ctx)
-		assert.NoError(t, err)
-	})
-	return ctx, pool
-}
-
 func TestUserRegistrationCommandHandler_Success(t *testing.T) {
-	ctx, pool := setupTest(t)
+	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	cr := cmd2.NewCompositionRoot(configs.Config{}, pool)
+	u, err := user.New("test", "123", user.ProviderTelegram)
+	require.Nil(t, err)
 
-	uowFactory := cr.NewUnitOfWorkFactory()
-
-	cmd, err := commands.NewUserRegistrationCommand("test", "123", user.ProviderTelegram)
+	cmd, err := commands.NewUserRegistrationCommand(u.Name(), u.GetExternalIdentity().ExternalID(), u.GetExternalIdentity().Provider())
 	assert.Nil(t, err)
 
-	handler := cr.NewUserRegistrationCommandHandler()
+	var captureObj *user.User
+	userRepoMock := &portsmocks.UserRepositoryMock{}
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(ctx, u.GetExternalIdentity().Provider(), u.GetExternalIdentity().ExternalID()).
+		Return(nil, nil).
+		Once()
+	userRepoMock.
+		EXPECT().
+		Create(ctx, mock.AnythingOfType("*user.User")).
+		Run(func(ctx context.Context, u *user.User) {
+			captureObj = u
+		}).
+		Return(nil).
+		Once()
+
+	uowMock := &portsmocks.UnitOfWorkMock{}
+	uowMock.
+		On("UserRepository").
+		Return(userRepoMock)
+	uowMock.
+		EXPECT().
+		Begin(ctx).
+		Return(nil)
+	uowMock.
+		EXPECT().
+		RollbackUnlessCommitted().
+		Return(nil)
+	uowMock.
+		EXPECT().
+		Commit(ctx).
+		Return(nil)
+
+	handler, err := commands.NewUserRegistrationCommandHandler(logger, uowMock)
+	require.Nil(t, err)
 
 	err = handler.Handle(ctx, cmd)
 	assert.Nil(t, err)
-
-	ei, err := uowFactory.New()
-	require.Nil(t, err)
-
-	u, err := ei.UserRepository().FindByExternalProvider(user.ProviderTelegram, "123")
-	require.Nil(t, err)
-	require.NotNil(t, u)
-	assert.Equal(t, "test", u.Name())
-	assert.NotEqual(t, uuid.Nil, u.ID())
+	assert.Equal(t, "test", captureObj.Name())
+	assert.NotEqual(t, uuid.Nil, captureObj.ID())
+	assert.Equal(t, user.ProviderTelegram, captureObj.GetExternalIdentity().Provider())
+	assert.Equal(t, "123", captureObj.GetExternalIdentity().ExternalID())
 }
 
 func TestUserRegistrationCommandHandler_Failure_EmptyName(t *testing.T) {
@@ -90,45 +88,70 @@ func TestUserRegistrationCommandHandler_Failure_EmptyTelegramChatID(t *testing.T
 }
 
 func TestUserRegistrationCommandHandler_Idempotent(t *testing.T) {
-	ctx, pool := setupTest(t)
+	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	cr := cmd2.NewCompositionRoot(configs.Config{}, pool)
-
-	uowFactory := cr.NewUnitOfWorkFactory()
-
-	handler := cr.NewUserRegistrationCommandHandler()
+	u, err := user.New("test", "123", user.ProviderTelegram)
+	require.NoError(t, err)
 
 	cmd, err := commands.NewUserRegistrationCommand(
-		"test",
-		"123",
-		user.ProviderTelegram,
+		u.Name(),
+		u.GetExternalIdentity().ExternalID(),
+		u.GetExternalIdentity().Provider(),
 	)
 	require.NoError(t, err)
 
-	// первый вызов
+	userRepoMock := &portsmocks.UserRepositoryMock{}
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(
+			ctx,
+			user.ProviderTelegram,
+			"123",
+		).
+		Return(nil, nil).
+		Once()
+	userRepoMock.
+		EXPECT().
+		Create(ctx, mock.AnythingOfType("*user.User")).
+		Return(nil).
+		Once()
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(
+			ctx,
+			user.ProviderTelegram,
+			"123",
+		).
+		Return(u, nil).
+		Once()
+
+	uowMock := &portsmocks.UnitOfWorkMock{}
+	uowMock.
+		On("UserRepository").
+		Return(userRepoMock)
+	uowMock.
+		EXPECT().
+		Begin(ctx).
+		Return(nil).
+		Times(2)
+	uowMock.
+		EXPECT().
+		RollbackUnlessCommitted().
+		Return(nil).
+		Times(2)
+	uowMock.
+		EXPECT().
+		Commit(ctx).
+		Return(nil).
+		Once()
+
+	handler, err := commands.NewUserRegistrationCommandHandler(logger, uowMock)
+	require.NoError(t, err)
+
 	err = handler.Handle(ctx, cmd)
 	require.NoError(t, err)
 
-	// второй вызов (повторный /start)
 	err = handler.Handle(ctx, cmd)
 	require.NoError(t, err)
-
-	uow, err := uowFactory.New()
-	require.NoError(t, err)
-
-	// пользователь всё ещё один
-	user1, err := uow.UserRepository().
-		FindByExternalProvider(user.ProviderTelegram, "123")
-	require.NoError(t, err)
-	require.NotNil(t, user1)
-
-	usersCount := 0
-	err = pool.GetContext(ctx, &usersCount, `SELECT COUNT(*) FROM users`)
-	require.NoError(t, err)
-	assert.Equal(t, 1, usersCount)
-
-	identitiesCount := 0
-	err = pool.GetContext(ctx, &identitiesCount, `SELECT COUNT(*) FROM external_identities`)
-	require.NoError(t, err)
-	assert.Equal(t, 1, identitiesCount)
 }

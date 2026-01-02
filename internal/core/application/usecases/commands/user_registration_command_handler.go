@@ -16,44 +16,39 @@ type UserRegistrationCommandHandler interface {
 var _ UserRegistrationCommandHandler = userRegistrationCommandHandler{}
 
 type userRegistrationCommandHandler struct {
-	logger     ports.Logger
-	uowFactory ports.UnitOfWorkFactory
+	logger ports.Logger
+	uow    ports.UnitOfWork
 }
 
-func NewUserRegistrationCommandHandler(logger ports.Logger, uowFactory ports.UnitOfWorkFactory) (UserRegistrationCommandHandler, error) {
+func NewUserRegistrationCommandHandler(logger ports.Logger, uow ports.UnitOfWork) (UserRegistrationCommandHandler, error) {
 	if logger == nil {
 		return nil, errs.NewValueIsRequiredError("logger")
 	}
 
-	if uowFactory == nil {
-		return nil, errs.NewValueIsRequiredError("uowFactory")
+	if uow == nil {
+		return nil, errs.NewValueIsRequiredError("uow")
 	}
 
 	return &userRegistrationCommandHandler{
-		logger:     logger,
-		uowFactory: uowFactory,
+		logger: logger,
+		uow:    uow,
 	}, nil
 }
 
 func (u userRegistrationCommandHandler) Handle(ctx context.Context, command UserRegistrationCommand) error {
-	uow, err := u.uowFactory.New()
-	if err != nil {
-		return err
-	}
-
 	defer func(uow ports.UnitOfWork) {
 		err := uow.RollbackUnlessCommitted()
 		if err != nil {
 			u.logger.Error("user registration command handler: rollback failed", "err", err)
 		}
-	}(uow)
+	}(u.uow)
 
-	err = uow.Begin(ctx)
+	err := u.uow.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	existsUser, err := uow.UserRepository().FindByExternalProvider(command.Provider(), command.ChatID())
+	existsUser, err := u.uow.UserRepository().FindByExternalProvider(ctx, command.Provider(), command.ChatID())
 	if err != nil {
 		if !errors.Is(err, errs.ErrObjectNotFound) {
 			return err
@@ -69,10 +64,10 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 		return err
 	}
 
-	err = uow.UserRepository().Create(ctx, nu)
+	err = u.uow.UserRepository().Create(ctx, nu)
 	if err != nil {
 		return err
 	}
 
-	return uow.Commit(ctx)
+	return u.uow.Commit(ctx)
 }

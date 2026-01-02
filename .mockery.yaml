@@ -1,0 +1,16 @@
+all: false
+recursive: true
+structname: '{{.InterfaceName}}{{.Mock}}'
+filename: "{{.StructName}}.go"
+pkgname: '{{.SrcPackageName}}mocks'
+dir: ./mocks
+
+packages:
+  github.com/Nemizar/coin_tamer_bot/internal/core/ports:
+    config:
+      dir: ./mocks/core/portsmocks
+    interfaces:
+      UserRepository:
+        config: {}
+      UnitOfWork:
+        config: {}

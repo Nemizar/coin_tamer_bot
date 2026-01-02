@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"os"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/eventshandler"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/Nemizar/coin_tamer_bot/configs"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/postgres"
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl"
 	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl/handlers/slogpretty"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
 	"github.com/Nemizar/coin_tamer_bot/internal/core/ports"
@@ -59,7 +60,7 @@ func (cr *CompositionRoot) NewUnitOfWorkFactory() ports.UnitOfWorkFactory {
 }
 
 func (cr *CompositionRoot) NewUserRegistrationCommandHandler() commands.UserRegistrationCommandHandler {
-	handler, err := commands.NewUserRegistrationCommandHandler(cr.logger, cr.NewUnitOfWorkFactory())
+	handler, err := commands.NewUserRegistrationCommandHandler(cr.logger, cr.NewUnitOfWork())
 	if err != nil {
 		panic(fmt.Sprintf("cannot create UserRegistrationCommandHandler: %v", err))
 	}
@@ -69,32 +70,64 @@ func (cr *CompositionRoot) NewUserRegistrationCommandHandler() commands.UserRegi
 
 func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
 	mediatr := ddd.NewMediatr()
-	mediatr.Subscribe(cr.NewExternalIdentityAddedDomainEventHandler(), user.NewEmptyExternalIdentityAddedEvent())
+	mediatr.Subscribe(cr.NewExternalIdentityAddedDomainEventHandler(), user.NewEmptyRegisterEvent())
 
 	return mediatr
 }
 
 func (cr *CompositionRoot) NewExternalIdentityAddedDomainEventHandler() ddd.EventHandler {
-	return eventshandler.NewExternalIdentityAddedEventHandler()
+	bot, err := cr.NewTelegramBot()
+	if err != nil {
+		panic(err)
+	}
+
+	handler, err := eventshandler.NewExternalIdentityAddedEventHandler(bot)
+	if err != nil {
+		panic(err)
+	}
+
+	return handler
 }
 
 func (cr *CompositionRoot) Logger() ports.Logger {
 	return cr.logger
 }
 
-func setupLogger(c configs.Config) ports.Logger {
-	var log ports.Logger
-
-	if c.IsProd() {
-		log = sl.NewSlogLogger(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	} else {
-		log = setupPrettySlog()
+func (cr *CompositionRoot) NewTelegramBot() (*tgbotapi.BotAPI, error) {
+	bot, err := tgbotapi.NewBotAPI(cr.config.TelegramBotToken)
+	if err != nil {
+		return nil, err
 	}
 
-	return log
+	if cr.config.IsDev() {
+		bot.Debug = true
+	}
+
+	return bot, nil
 }
 
-func setupPrettySlog() ports.Logger {
+func setupLogger(c configs.Config) ports.Logger {
+	var (
+		slogger *slog.Logger
+	)
+
+	if c.IsProd() {
+		slogger = slog.New(
+			slog.NewJSONHandler(
+				os.Stdout,
+				&slog.HandlerOptions{Level: slog.LevelInfo},
+			),
+		)
+	} else {
+		slogger = setupPrettySlog()
+	}
+
+	slog.SetDefault(slogger)
+
+	return sl.NewSlogLogger(slogger)
+}
+
+func setupPrettySlog() *slog.Logger {
 	opts := slogpretty.PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{
 			Level: slog.LevelDebug,
@@ -103,5 +136,5 @@ func setupPrettySlog() ports.Logger {
 
 	handler := opts.NewPrettyHandler(os.Stdout)
 
-	return sl.NewSlogLogger(slog.New(handler))
+	return slog.New(handler)
 }
