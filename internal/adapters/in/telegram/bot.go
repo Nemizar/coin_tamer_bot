@@ -20,13 +20,22 @@ type Bot struct {
 	telegramUserRegistrationCommandHandler commands.UserRegistrationCommandHandler
 }
 
-func NewBot(logger ports.Logger, telegramBotToken string, telegramUserRegistrationHAndler commands.UserRegistrationCommandHandler) (*Bot, error) {
+func NewBot(
+	logger ports.Logger,
+	telegramBotToken string,
+	telegramUserRegistrationHandler commands.UserRegistrationCommandHandler,
+	createDefaultCategoriesCommandHandler commands.CreateDefaultCategoryCommandHandler,
+) (*Bot, error) {
 	if logger == nil {
 		return nil, errs.NewValueIsRequiredError("logger")
 	}
 
-	if telegramUserRegistrationHAndler == nil {
-		return nil, errs.NewValueIsRequiredError("telegramUserRegistrationHAndler")
+	if telegramUserRegistrationHandler == nil {
+		return nil, errs.NewValueIsRequiredError("telegramUserRegistrationHandler")
+	}
+
+	if createDefaultCategoriesCommandHandler == nil {
+		return nil, errs.NewValueIsRequiredError("createDefaultCategoriesCommandHandler")
 	}
 
 	if telegramBotToken == "" {
@@ -39,18 +48,23 @@ func NewBot(logger ports.Logger, telegramBotToken string, telegramUserRegistrati
 	}
 
 	r := newRouter()
-	startCmdHandler, err := newStartCommandHandler(telegramUserRegistrationHAndler)
+	startCmdHandler, err := newStartCommandHandler(telegramUserRegistrationHandler)
 	if err != nil {
 		return nil, err
 	}
-
 	r.registerCommand(startCmdHandler)
+
+	createDefaultCategoriesCmdHandler, err := newCreateDefaultCategoriesCommandHandler(createDefaultCategoriesCommandHandler)
+	if err != nil {
+		return nil, err
+	}
+	r.registerCommand(createDefaultCategoriesCmdHandler)
 
 	return &Bot{
 		bot:                                    bot,
 		logger:                                 logger,
 		router:                                 r,
-		telegramUserRegistrationCommandHandler: telegramUserRegistrationHAndler,
+		telegramUserRegistrationCommandHandler: telegramUserRegistrationHandler,
 	}, nil
 }
 

@@ -37,7 +37,12 @@ func main() {
 }
 
 func startBot(compositionRoot *cmd.CompositionRoot, token string) {
-	bot, err := telegram.NewBot(compositionRoot.Logger(), token, compositionRoot.NewUserRegistrationCommandHandler())
+	bot, err := telegram.NewBot(
+		compositionRoot.Logger(),
+		token,
+		compositionRoot.NewUserRegistrationCommandHandler(),
+		compositionRoot.NewCreateDefaultCategoryCommandHandler(),
+	)
 	if err != nil {
 		panic(fmt.Sprintf("create bot %s", err))
 	}

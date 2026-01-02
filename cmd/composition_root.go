@@ -68,6 +68,15 @@ func (cr *CompositionRoot) NewUserRegistrationCommandHandler() commands.UserRegi
 	return handler
 }
 
+func (cr *CompositionRoot) NewCreateDefaultCategoryCommandHandler() commands.CreateDefaultCategoryCommandHandler {
+	handler, err := commands.NewCreateDefaultCategoryCommandHandler(cr.logger, cr.NewUnitOfWork())
+	if err != nil {
+		panic(fmt.Sprintf("can not create CreateDefaultCategoryCommandHandler: %v", err))
+	}
+
+	return handler
+}
+
 func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
 	mediatr := ddd.NewMediatr()
 	mediatr.Subscribe(cr.NewExternalIdentityAddedDomainEventHandler(), user.NewEmptyRegisterEvent())
