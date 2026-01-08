@@ -41,8 +41,6 @@ func New(name string, chatID string, provider Provider) (*User, error) {
 		return nil, err
 	}
 
-	u.RaiseDomainEvent(NewRegisterEvent(&u))
-
 	return &u, nil
 }
 

@@ -8,28 +8,10 @@ import (
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
-
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
 )
 
-type startCommandHandler struct {
-	usecase commands.UserRegistrationCommandHandler
-}
-
-func newStartCommandHandler(usecase commands.UserRegistrationCommandHandler) (*startCommandHandler, error) {
-	if usecase == nil {
-		return nil, errs.NewValueIsRequiredError("usecase")
-	}
-
-	return &startCommandHandler{usecase: usecase}, nil
-}
-
-func (h *startCommandHandler) command() string {
-	return "start"
-}
-
-func (h *startCommandHandler) handle(ctx context.Context, update tgbotapi.Update) error {
+func (b *Bot) handleStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	cmd, err := commands.NewUserRegistrationCommand(
 		update.Message.From.UserName,
 		strconv.FormatInt(update.Message.Chat.ID, 10),
@@ -40,5 +22,20 @@ func (h *startCommandHandler) handle(ctx context.Context, update tgbotapi.Update
 		return err
 	}
 
-	return h.usecase.Handle(ctx, cmd)
+	err = b.userRegistrationCommandHandler.Handle(ctx, cmd)
+	if err != nil {
+		err2 := b.sendMsg(update.Message.Chat.ID, "Ошибка регистрации. Попробуйте снова /start")
+		if err2 != nil {
+			b.logger.Error("Ошибка отправки сообщения об ошибке регистрации", err2, err2.Error())
+		}
+
+		return err
+	}
+
+	err = b.sendMsg(update.Message.Chat.ID, "Успешная регистрация. Выполните команду /create_default_categories для создания категорий")
+	if err != nil {
+		b.logger.Error("Ошибка отправки сообщения об успешной регистрации", err, err.Error())
+	}
+
+	return nil
 }

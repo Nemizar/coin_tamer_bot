@@ -8,36 +8,32 @@ import (
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
-
 	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/commands"
 )
 
-type createDefaultCategoriesCommandHandler struct {
-	usecase commands.CreateDefaultCategoryCommandHandler
-}
-
-func newCreateDefaultCategoriesCommandHandler(usecase commands.CreateDefaultCategoryCommandHandler) (*createDefaultCategoriesCommandHandler, error) {
-	if usecase == nil {
-		return nil, errs.NewValueIsRequiredError("usecase")
-	}
-
-	return &createDefaultCategoriesCommandHandler{usecase: usecase}, nil
-}
-
-func (h *createDefaultCategoriesCommandHandler) command() string {
-	return "create_default_categories"
-}
-
-func (h *createDefaultCategoriesCommandHandler) handle(ctx context.Context, update tgbotapi.Update) error {
+func (b *Bot) handleCreateDefaultCategoriesCommand(ctx context.Context, update tgbotapi.Update) error {
 	cmd, err := commands.NewCreateDefaultCategoryCommand(
 		strconv.FormatInt(update.Message.Chat.ID, 10),
 		user.ProviderTelegram,
 	)
-
 	if err != nil {
 		return err
 	}
 
-	return h.usecase.Handle(ctx, cmd)
+	err = b.createDefaultCategoriesCommandHandler.Handle(ctx, cmd)
+	if err != nil {
+		err2 := b.sendMsg(update.Message.Chat.ID, "Ошибка при создании категорий. Попробуйте снова")
+		if err2 != nil {
+			b.logger.Error("Ошибка создания категорий", err2, err2.Error())
+		}
+
+		return err
+	}
+
+	err = b.sendMsg(update.Message.Chat.ID, "Категории успешно созданы. Для начала ведения расходов отправьте сумму расхода в чат")
+	if err != nil {
+		b.logger.Error("Ошибка отправки сообщения о создании категорий", err, err.Error())
+	}
+
+	return nil
 }

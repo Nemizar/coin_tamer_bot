@@ -42,6 +42,9 @@ func startBot(compositionRoot *cmd.CompositionRoot, token string) {
 		token,
 		compositionRoot.NewUserRegistrationCommandHandler(),
 		compositionRoot.NewCreateDefaultCategoryCommandHandler(),
+		compositionRoot.NewCreateTransactionCommandHandler(),
+		compositionRoot.NewGetCategoriesByTypeQueryHandler(),
+		compositionRoot.NewGetUserQueryHandler(),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("create bot %s", err))

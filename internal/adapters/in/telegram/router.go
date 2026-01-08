@@ -9,37 +9,22 @@ import (
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/errs"
 )
 
-type router struct {
-	commandsHandler map[string]commandHandler
-	messageHandler  []messageHandler
-	callbackHandler []callbackHandler
-}
-
-func newRouter() *router {
-	return &router{
-		commandsHandler: make(map[string]commandHandler),
-		messageHandler:  make([]messageHandler, 0),
-		callbackHandler: make([]callbackHandler, 0),
-	}
-}
-
-func (r *router) registerCommand(h commandHandler) {
-	r.commandsHandler[h.command()] = h
-}
-
-func (r *router) handleUpdate(ctx context.Context, update tgbotapi.Update) error {
+func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) error {
 	switch {
 	case update.Message != nil && update.Message.IsCommand():
 		cmd := update.Message.Command()
-		if handler, ok := r.commandsHandler[cmd]; ok {
-			return handler.handle(ctx, update)
+		switch cmd {
+		case "start":
+			return b.handleStartCommand(ctx, update)
+		case "create_default_categories":
+			return b.handleCreateDefaultCategoriesCommand(ctx, update)
 		}
 
 		return errs.NewValueIsInvalidErrorWithCause("command", errs.NewValueIsInvalidError("command "+cmd))
 	case update.CallbackQuery != nil:
-		// TODO: implement callback query handling
+		return b.handleCb(ctx, update.CallbackQuery)
 	case update.Message != nil:
-		// TODO: implement message handling
+		return b.handleMsg(ctx, update)
 	}
 
 	return fmt.Errorf("not expected type")

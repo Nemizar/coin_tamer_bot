@@ -9,8 +9,9 @@ import (
 )
 
 type defaultCategoryTemplate struct {
-	Name     string
-	Children []string
+	name     string
+	children []string
+	cType    category.Type
 }
 
 type CreateDefaultCategoryCommandHandler interface {
@@ -59,7 +60,8 @@ func (c createDefaultCategoryCommandHandler) Handle(ctx context.Context, command
 
 	for _, tpl := range c.getDefaultsCategory() {
 		parent, err := category.New(
-			tpl.Name,
+			tpl.name,
+			tpl.cType,
 			u.ID(),
 			nil,
 		)
@@ -71,10 +73,11 @@ func (c createDefaultCategoryCommandHandler) Handle(ctx context.Context, command
 			return err
 		}
 
-		for _, childName := range tpl.Children {
+		for _, childName := range tpl.children {
 			pID := parent.ID()
 			child, err := category.New(
 				childName,
+				tpl.cType,
 				u.ID(),
 				&pID,
 			)
@@ -94,73 +97,94 @@ func (c createDefaultCategoryCommandHandler) Handle(ctx context.Context, command
 func (c createDefaultCategoryCommandHandler) getDefaultsCategory() []defaultCategoryTemplate {
 	return []defaultCategoryTemplate{
 		{
-			Name: "Покупки",
-			Children: []string{
+			name: "Покупки",
+			children: []string{
 				"🍎 Еда, продукты",
 				"👕 Одежда",
 				"🏡 Дом, хозяйство",
 				"💻 Техника",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Обязательные",
-			Children: []string{
+			name: "Обязательные",
+			children: []string{
 				"🏠 ЖКХ",
 				"📞 Телефон",
 				"💸 Налоги",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Здоровье",
-			Children: []string{
+			name: "Здоровье",
+			children: []string{
 				"🏥 Медицина",
 				"🏋️ Спорт, здоровье",
 				"💅 Красота",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Транспорт",
-			Children: []string{
+			name: "Транспорт",
+			children: []string{
 				"🚙 Машина",
 				"✈️ Поездки",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Прочее",
-			Children: []string{
+			name: "Прочее",
+			children: []string{
 				"🔹 Прочее",
 				"⚠️ Внеплановые расходы",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Развлечения",
-			Children: []string{
+			name: "Развлечения",
+			children: []string{
 				"🎬 Кино, театр",
 				"🌍 Путешествия",
 				"☕ Кафе",
 				"🎁 Сувениры",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Праздники",
-			Children: []string{
+			name: "Праздники",
+			children: []string{
 				"🎀 Подарки",
 				"🎊 Праздники",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Услуги",
-			Children: []string{
+			name: "Услуги",
+			children: []string{
 				"🔧 Услуги/сервисы",
 				"🌐 Интернет",
 			},
+			cType: category.TypeExpense,
 		},
 		{
-			Name: "Обучение",
-			Children: []string{
+			name: "Обучение",
+			children: []string{
 				"📚 Книги",
 				"🎓 Курсы и учеба",
 			},
+			cType: category.TypeExpense,
+		},
+		{
+			name:  "Зарплата",
+			cType: category.TypeIncome,
+		},
+		{
+			name:  "Проценты с вклада",
+			cType: category.TypeIncome,
+		},
+		{
+			name:  "Кешбек",
+			cType: category.TypeIncome,
 		},
 	}
 }

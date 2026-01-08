@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS categories
     name               text                        NOT NULL,
     owner_id           uuid                        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     parent_category_id uuid,
+    type               text                        NOT NULL,
     created_at         timestamp(0) with time zone NOT NULL DEFAULT NOW()
 );
 -- +goose StatementEnd

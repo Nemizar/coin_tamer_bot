@@ -5,13 +5,11 @@ import (
 	"log/slog"
 	"os"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl"
-	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/user"
+	"github.com/Nemizar/coin_tamer_bot/internal/core/application/usecases/queries"
 
-	"github.com/Nemizar/coin_tamer_bot/internal/core/application/eventshandler"
+	"github.com/Nemizar/coin_tamer_bot/internal/adapters/out/sl"
 	"github.com/Nemizar/coin_tamer_bot/internal/pkg/ddd"
 
 	"github.com/Nemizar/coin_tamer_bot/configs"
@@ -77,42 +75,41 @@ func (cr *CompositionRoot) NewCreateDefaultCategoryCommandHandler() commands.Cre
 	return handler
 }
 
-func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
-	mediatr := ddd.NewMediatr()
-	mediatr.Subscribe(cr.NewExternalIdentityAddedDomainEventHandler(), user.NewEmptyRegisterEvent())
-
-	return mediatr
-}
-
-func (cr *CompositionRoot) NewExternalIdentityAddedDomainEventHandler() ddd.EventHandler {
-	bot, err := cr.NewTelegramBot()
+func (cr *CompositionRoot) NewCreateTransactionCommandHandler() commands.CreateTransactionCommandHandler {
+	handler, err := commands.NewCreateTransactionCommandHandler(cr.logger, cr.NewUnitOfWork())
 	if err != nil {
-		panic(err)
-	}
-
-	handler, err := eventshandler.NewExternalIdentityAddedEventHandler(bot)
-	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("can not create CreateTransactionCommandHandler: %v", err))
 	}
 
 	return handler
 }
 
-func (cr *CompositionRoot) Logger() ports.Logger {
-	return cr.logger
+func (cr *CompositionRoot) NewGetUserQueryHandler() queries.GetUserQueryHandler {
+	handler, err := queries.NewGetUserQueryHandler(cr.NewUnitOfWork())
+	if err != nil {
+		panic(fmt.Sprintf("can not create UserQueryHandler: %v", err))
+	}
+
+	return handler
 }
 
-func (cr *CompositionRoot) NewTelegramBot() (*tgbotapi.BotAPI, error) {
-	bot, err := tgbotapi.NewBotAPI(cr.config.TelegramBotToken)
+func (cr *CompositionRoot) NewGetCategoriesByTypeQueryHandler() queries.GetUserCategoriesByTypeQueryHandler {
+	handler, err := queries.NewGetUserCategoriesByTypeQueryHandler(cr.NewUnitOfWork())
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("can not create UserCategoriesByTypeQueryHandler: %v", err))
 	}
 
-	if cr.config.IsDev() {
-		bot.Debug = true
-	}
+	return handler
+}
 
-	return bot, nil
+func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
+	mediatr := ddd.NewMediatr()
+
+	return mediatr
+}
+
+func (cr *CompositionRoot) Logger() ports.Logger {
+	return cr.logger
 }
 
 func setupLogger(c configs.Config) ports.Logger {
