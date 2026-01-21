@@ -14,3 +14,7 @@ packages:
         config: {}
       UnitOfWork:
         config: {}
+      CategoryRepository:
+        config: {}
+      TransactionRepository:
+        config: {}

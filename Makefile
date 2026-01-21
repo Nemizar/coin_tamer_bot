@@ -110,6 +110,12 @@ lint:
 .PHONY: lint-fix
 lint-fix:
 	make lint args=--fix
+
+## test-cover: Запуск всех тестов с генерацией покрытия
+cover:
+	CGO_ENABLED=1 go test -short -count=1 -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
+	rm coverage.out
 # ==================================================================================== #
 # BUILD
 # ==================================================================================== #

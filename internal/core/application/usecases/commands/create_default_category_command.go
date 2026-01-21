@@ -24,7 +24,7 @@ func (c createDefaultCategoryCommand) Provider() user.Provider {
 }
 
 func NewCreateDefaultCategoryCommand(externalID string, provider user.Provider) (CreateDefaultCategoryCommand, error) {
-	if externalID == "" {
+	if externalID == "" || externalID == "0" {
 		return nil, errs.NewValueIsRequiredError("externalID")
 	}
 

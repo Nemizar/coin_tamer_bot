@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Nemizar/coin_tamer_bot/internal/core/domain/models/transaction"
@@ -23,8 +24,8 @@ func TestNewAmount_ZeroOrNegative(t *testing.T) {
 		name  string
 		input decimal.Decimal
 	}{
-		{"zero", decimal.NewFromInt(0)},
-		{"negative", decimal.NewFromInt(-5)},
+		{"ноль", decimal.NewFromInt(0)},
+		{"отрицательное", decimal.NewFromInt(-5)},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +59,9 @@ func TestNewAmountFromString_Success(t *testing.T) {
 	}{
 		{"10", "10.00"},
 		{"  25.5 ", "25.50"},
-		{"3,14", "3.14"}, // поддержка запятой
+		{"3,14", "3.14"},                 // поддержка запятой
+		{"0.01", "0.01"},                 // минимальная положительная сумма
+		{"999999999.99", "999999999.99"}, // большая сумма
 	}
 
 	for _, tt := range tests {
@@ -81,4 +84,49 @@ func TestNewAmountFromString_ZeroOrNegative(t *testing.T) {
 
 	_, err = transaction.NewAmountFromString("-42")
 	require.ErrorIs(t, err, transaction.ErrInvalidAmount)
+}
+
+func TestNewAmountFromString_WithLeadingZeros(t *testing.T) {
+	amount, err := transaction.NewAmountFromString("000123.45")
+	require.NoError(t, err)
+	require.Equal(t, "123.45", amount.String())
+}
+
+func TestNewAmountFromString_WithTrailingSpaces(t *testing.T) {
+	amount, err := transaction.NewAmountFromString("  123.45  ")
+	require.NoError(t, err)
+	require.Equal(t, "123.45", amount.String())
+}
+
+func TestNewAmountFromString_WithVerySmallPositiveValue(t *testing.T) {
+	amount, err := transaction.NewAmountFromString("0.001")
+	require.NoError(t, err)
+	require.Equal(t, "0.00", amount.String()) // Should round to 2 decimal places
+}
+
+func TestAmount_ValueAndString(t *testing.T) {
+	dec := decimal.NewFromFloat(123.45)
+	amount, err := transaction.NewAmount(dec)
+	require.NoError(t, err)
+
+	assert.Equal(t, dec, amount.Value())
+	assert.Equal(t, "123.45", amount.String())
+}
+
+func TestAmount_Equals(t *testing.T) {
+	dec1 := decimal.NewFromFloat(123.45)
+	dec2 := decimal.NewFromFloat(123.45)
+	dec3 := decimal.NewFromFloat(99.99)
+
+	amount1, err := transaction.NewAmount(dec1)
+	require.NoError(t, err)
+
+	amount2, err := transaction.NewAmount(dec2)
+	require.NoError(t, err)
+
+	amount3, err := transaction.NewAmount(dec3)
+	require.NoError(t, err)
+
+	assert.Equal(t, amount1, amount2)    // Same value
+	assert.NotEqual(t, amount1, amount3) // Different values
 }
