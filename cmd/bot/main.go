@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -20,23 +22,61 @@ const (
 	setMaxOpenConns    = 5
 	setConnMaxLifetime = 10 * time.Minute
 	setConnMaxIdleTime = 10 * time.Minute
+	shutdownTimeout    = 30 * time.Second
 )
 
 func main() {
 	cfg := configs.MustLoad()
 
 	db := mustOpenDB(cfg)
-
 	compositionRoot := cmd.NewCompositionRoot(cfg, db)
 	defer compositionRoot.CloseAll()
 
-	compositionRoot.Logger().Info("bot started")
-	compositionRoot.Logger().Info("ENV", "env", cfg.ENV)
+	logger := compositionRoot.Logger()
 
-	startBot(compositionRoot, cfg.TelegramBotToken)
+	logger.Info("bot starting", "env", cfg.ENV)
+
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		if err := startBot(ctx, compositionRoot, cfg.TelegramBotToken); err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	case err := <-errCh:
+		logger.Error("bot stopped with error", "err", err)
+	}
+
+	shutdownTimer := time.NewTimer(shutdownTimeout)
+	defer shutdownTimer.Stop()
+
+	select {
+	case <-done:
+		logger.Info("bot stopped gracefully")
+	case <-shutdownTimer.C:
+		logger.Error("shutdown timeout exceeded")
+	}
 }
 
-func startBot(compositionRoot *cmd.CompositionRoot, token string) {
+func startBot(
+	ctx context.Context,
+	compositionRoot *cmd.CompositionRoot,
+	token string,
+) error {
 	bot, err := telegram.NewBot(
 		compositionRoot.Logger(),
 		token,
@@ -47,10 +87,12 @@ func startBot(compositionRoot *cmd.CompositionRoot, token string) {
 		compositionRoot.NewGetUserQueryHandler(),
 	)
 	if err != nil {
-		panic(fmt.Sprintf("create bot %s", err))
+		return fmt.Errorf("create bot: %w", err)
 	}
 
-	bot.HandleUpdates(context.Background())
+	bot.HandleUpdates(ctx)
+
+	return nil
 }
 
 func mustOpenDB(cfg configs.Config) *sqlx.DB {

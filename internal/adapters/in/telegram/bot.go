@@ -91,15 +91,26 @@ func (b *Bot) HandleUpdates(ctx context.Context) {
 
 	updates := b.bot.GetUpdatesChan(u)
 
-	for update := range updates {
-		b.logger.Info("handle update", "update_id", update.UpdateID)
+	for {
+		select {
+		case <-ctx.Done():
+			b.logger.Info("context cancelled, stopping bot updates handler")
+			return
+		case update, ok := <-updates:
+			if !ok {
+				b.logger.Info("updates channel closed, stopping bot updates handler")
+				return
+			}
 
-		if err := b.safeHandleUpdate(ctx, update); err != nil {
-			b.logger.Error(
-				"failed to handle update",
-				"update_id", update.UpdateID,
-				"err", err.Error(),
-			)
+			b.logger.Info("handle update", "update_id", update.UpdateID)
+
+			if err := b.safeHandleUpdate(ctx, update); err != nil {
+				b.logger.Error(
+					"failed to handle update",
+					"update_id", update.UpdateID,
+					"err", err.Error(),
+				)
+			}
 		}
 	}
 }
