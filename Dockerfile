@@ -34,7 +34,7 @@ COPY --from=builder /app/bot .
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
 
 # Copy migrations directory (adjust path if different)
-COPY internal/migrations/ ./internal/migrations/
+COPY internal/migrations/ ./migrations/
 
 # Switch to non-root user
 USER appuser
