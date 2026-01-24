@@ -9,7 +9,7 @@ WORKDIR /app
 # Copy source code and build
 COPY . .
 RUN go mod download && go mod verify
-RUN go build -ldflags='-s' ./cmd/bot
+RUN go build -mod=vendor -ldflags='-s' ./cmd/bot
 
 # Run stage - use distroless or scratch as base for minimal attack surface
 FROM alpine:3.19
