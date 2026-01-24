@@ -181,7 +181,64 @@ func TestUserRegistrationCommandHandler_UserAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 
 	err = handler.Handle(ctx, cmd)
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, errs.ErrEntityAlreadyExists))
+
+	// Проверяем, что Create не был вызван
+	userRepoMock.AssertNotCalled(t, "Create")
+	userRepoMock.AssertExpectations(t)
+	uowMock.AssertExpectations(t)
+}
+
+func TestUserRegistrationCommandHandler_UserAlreadyExistsReturnsCorrectErrorType(t *testing.T) {
+	ctx := context.Background()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	u, err := user.New("test", "123", user.ProviderTelegram)
+	require.NoError(t, err)
+
+	cmd, err := commands.NewUserRegistrationCommand(
+		u.Name(),
+		u.GetExternalIdentity().ExternalID(),
+		u.GetExternalIdentity().Provider(),
+	)
+	require.NoError(t, err)
+
+	userRepoMock := &portsmocks.UserRepositoryMock{}
+	uowMock := &portsmocks.UnitOfWorkMock{}
+	uowMock.On("UserRepository").Return(userRepoMock)
+
+	// FindByExternalProvider возвращает существующего пользователя
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(ctx, u.GetExternalIdentity().Provider(), u.GetExternalIdentity().ExternalID()).
+		Return(u, nil). // Пользователь уже существует
+		Once()
+
+	uowMock.
+		EXPECT().
+		Begin(ctx).
+		Return(nil).
+		Once()
+	uowMock.
+		EXPECT().
+		RollbackUnlessCommitted().
+		Return(nil).
+		Once()
+
+	handler, err := commands.NewUserRegistrationCommandHandler(logger, uowMock)
+	require.NoError(t, err)
+
+	err = handler.Handle(ctx, cmd)
+	assert.Error(t, err)
+
+	// Проверяем, что возвращается правильный тип ошибки
+	var entityAlreadyExistsErr *errs.EntityAlreadyExistsError
+	assert.ErrorAs(t, err, &entityAlreadyExistsErr)
+	assert.Equal(t, "user", entityAlreadyExistsErr.Entity)
+	assert.Equal(t, "external_id", entityAlreadyExistsErr.Field)
+	assert.Equal(t, "123", entityAlreadyExistsErr.Value)
 
 	// Проверяем, что Create не был вызван
 	userRepoMock.AssertNotCalled(t, "Create")
@@ -365,18 +422,20 @@ func TestUserRegistrationCommandHandler_Logging(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, nil))
 
-	cmd, err := commands.NewUserRegistrationCommand("test", "123", user.ProviderTelegram)
-	require.NoError(t, err)
-
-	u, err := user.New("test", "123", user.ProviderTelegram)
+	cmd, err := commands.NewUserRegistrationCommand("new_user", "456", user.ProviderTelegram)
 	require.NoError(t, err)
 
 	uowMock, userRepoMock := setupMocks()
 
 	userRepoMock.
 		EXPECT().
-		FindByExternalProvider(ctx, user.ProviderTelegram, "123").
-		Return(u, nil).
+		FindByExternalProvider(ctx, user.ProviderTelegram, "456").
+		Return(nil, nil). // Нового пользователя еще нет
+		Once()
+	userRepoMock.
+		EXPECT().
+		Create(ctx, mock.AnythingOfType("*user.User")).
+		Return(nil).
 		Once()
 
 	uowMock.
