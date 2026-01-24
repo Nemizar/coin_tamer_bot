@@ -21,3 +21,4 @@ LICENSE
 Thumbs.db
 node_modules/
 bin/
+vendor
