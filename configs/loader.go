@@ -11,7 +11,7 @@ import (
 func MustLoad() Config {
 	cnf := Config{}
 
-	env := os.Getenv("APP_ENV")
+	env := os.Getenv("ENV")
 	if env == "" || env == "local" {
 		if err := godotenv.Load(); err != nil {
 			log.Fatal(".env file not found, using environment variables")
