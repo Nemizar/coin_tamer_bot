@@ -49,7 +49,7 @@ func main() {
 	go func() {
 		defer close(done)
 
-		if err := startBot(ctx, compositionRoot, cfg.TelegramBotToken); err != nil {
+		if err := startBot(ctx, compositionRoot, cfg); err != nil {
 			errCh <- err
 		}
 	}()
@@ -75,11 +75,12 @@ func main() {
 func startBot(
 	ctx context.Context,
 	compositionRoot *cmd.CompositionRoot,
-	token string,
+	cfg configs.Config,
 ) error {
 	bot, err := telegram.NewBot(
 		compositionRoot.Logger(),
-		token,
+		cfg.TelegramBotToken,
+		cfg.AllowedChatIDs,
 		compositionRoot.NewUserRegistrationCommandHandler(),
 		compositionRoot.NewCreateDefaultCategoryCommandHandler(),
 		compositionRoot.NewCreateTransactionCommandHandler(),

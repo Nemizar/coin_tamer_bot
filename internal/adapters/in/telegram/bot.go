@@ -27,11 +27,14 @@ type Bot struct {
 
 	getUserQueryHandler                 queries.GetUserQueryHandler
 	getUserCategoriesByTypeQueryHandler queries.GetUserCategoriesByTypeQueryHandler
+
+	allowedChatIDs map[int64]bool
 }
 
 func NewBot(
 	logger ports.Logger,
 	telegramBotToken string,
+	allowedChatIDs []int64,
 	userRegistrationHandler commands.UserRegistrationCommandHandler,
 	createDefaultCategoriesCommandHandler commands.CreateDefaultCategoryCommandHandler,
 	createTransactionCommandHandler commands.CreateTransactionCommandHandler,
@@ -71,6 +74,11 @@ func NewBot(
 		return nil, err
 	}
 
+	chatIDsMap := make(map[int64]bool, len(allowedChatIDs))
+	for _, chatID := range allowedChatIDs {
+		chatIDsMap[chatID] = true
+	}
+
 	tgBot := &Bot{
 		bot:                                   bot,
 		logger:                                logger,
@@ -80,6 +88,7 @@ func NewBot(
 		getUserCategoriesByTypeQueryHandler:   getUserCategoriesByTypeQueryHandler,
 		getUserQueryHandler:                   getUserQueryHandler,
 		cache:                                 cache.New(5*time.Minute, 10*time.Minute),
+		allowedChatIDs:                        chatIDsMap,
 	}
 
 	return tgBot, nil
@@ -116,6 +125,27 @@ func (b *Bot) HandleUpdates(ctx context.Context) {
 }
 
 func (b *Bot) safeHandleUpdate(ctx context.Context, update tgbotapi.Update) (err error) {
+	var chatID int64
+
+	switch {
+	case update.Message != nil:
+		chatID = update.Message.Chat.ID
+	case update.CallbackQuery != nil:
+		if update.CallbackQuery.Message != nil {
+			chatID = update.CallbackQuery.Message.Chat.ID
+		} else {
+			chatID = update.CallbackQuery.From.ID
+		}
+	default:
+		return nil
+	}
+
+	if !b.allowedChatIDs[chatID] {
+		b.logger.Info("received update from unauthorized chat", "chat_id", chatID, "update_id", update.UpdateID)
+
+		return nil
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			b.logger.Error(

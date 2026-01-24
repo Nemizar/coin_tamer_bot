@@ -13,6 +13,8 @@ type Config struct {
 	SSLMode string `envconfig:"DB_SSL_MODE" default:"disable"`
 
 	TelegramBotToken string `envconfig:"TELEGRAM_BOT_TOKEN"`
+
+	AllowedChatIDs []int64 `envconfig:"ALLOWED_CHAT_IDS"`
 }
 
 func (c Config) IsProd() bool {
