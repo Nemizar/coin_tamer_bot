@@ -6,7 +6,6 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-
 # Copy source code and build
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -a -ldflags="-w -s" -o bot ./cmd/bot
