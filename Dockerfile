@@ -6,10 +6,13 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
+# Copy go mod files and download dependencies first (for better layer caching)
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
 # Copy source code and build
 COPY . .
-RUN go mod download && go mod verify
-RUN go build -ldflags='-s' ./cmd/bot
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags="-w -s" -o bot ./cmd/bot
 
 # Run stage - use distroless or scratch as base for minimal attack surface
 FROM alpine:3.19
