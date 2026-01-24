@@ -56,7 +56,7 @@ func (u userRegistrationCommandHandler) Handle(ctx context.Context, command User
 	}
 
 	if existsUser != nil {
-		return nil
+		return errs.NewEntityAlreadyExistsError("user", "external_id", command.ChatID())
 	}
 
 	nu, err := user.New(command.Username(), command.ChatID(), command.Provider())
