@@ -8,6 +8,7 @@ WORKDIR /app
 
 # Copy source code and build
 COPY . .
+RUN go mod download && go mod verify
 RUN go build -ldflags='-s' ./cmd/bot
 
 # Run stage - use distroless or scratch as base for minimal attack surface
