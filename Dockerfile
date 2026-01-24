@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -a -ldflags="-w -s" -o bot ./cmd/bot
+RUN go build -ldflags='-s' ./cmd/bot
 
 # Run stage - use distroless or scratch as base for minimal attack surface
 FROM alpine:3.19
