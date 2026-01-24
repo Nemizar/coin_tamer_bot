@@ -34,11 +34,11 @@ COPY --from=builder /app/bot .
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
 
 # Copy migrations directory (adjust path if different)
-COPY internal/migrations/ ./migrations/
+COPY internal/migrations/ ./internal/migrations/
 
 # Switch to non-root user
 USER appuser
 
 # Run migrations first, then start the bot
 # Assumes DATABASE_URL is set in Dokku environment variables
-CMD ["sh", "-c", "goose -dir migrations postgres \"$DATABASE_URL\" up && ./bot"]
+CMD ["sh", "-c", "goose up && ./bot"]
