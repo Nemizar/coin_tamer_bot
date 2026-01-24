@@ -79,3 +79,15 @@ func (c CategoryRepository) getByUserIDAndType(ctx context.Context, stmt string,
 
 	return categories, nil
 }
+
+func (c CategoryRepository) HasCategoriesByUserID(ctx context.Context, userID shared.ID) (bool, error) {
+	stmt := `SELECT EXISTS(SELECT 1 FROM categories WHERE owner_id = $1)`
+
+	var exists bool
+	err := c.tracker.DB().QueryRowContext(ctx, stmt, userID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("category repo has categories by user id: %w", err)
+	}
+
+	return exists, nil
+}

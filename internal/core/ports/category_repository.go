@@ -11,4 +11,5 @@ type CategoryRepository interface {
 	Create(ctx context.Context, category *category.Category) error
 	GetIncomeByUserID(ctx context.Context, userID shared.ID) ([]*category.Category, error)
 	GetExpenseByUserID(ctx context.Context, userID shared.ID) ([]*category.Category, error)
+	HasCategoriesByUserID(ctx context.Context, userID shared.ID) (bool, error)
 }

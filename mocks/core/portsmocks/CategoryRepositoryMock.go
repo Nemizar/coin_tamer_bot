@@ -231,3 +231,69 @@ func (_c *CategoryRepositoryMock_GetIncomeByUserID_Call) RunAndReturn(run func(c
 	_c.Call.Return(run)
 	return _c
 }
+
+// HasCategoriesByUserID provides a mock function for the type CategoryRepositoryMock
+func (_mock *CategoryRepositoryMock) HasCategoriesByUserID(ctx context.Context, userID shared.ID) (bool, error) {
+	ret := _mock.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasCategoriesByUserID")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, shared.ID) (bool, error)); ok {
+		return returnFunc(ctx, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, shared.ID) bool); ok {
+		r0 = returnFunc(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, shared.ID) error); ok {
+		r1 = returnFunc(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// CategoryRepositoryMock_HasCategoriesByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasCategoriesByUserID'
+type CategoryRepositoryMock_HasCategoriesByUserID_Call struct {
+	*mock.Call
+}
+
+// HasCategoriesByUserID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID shared.ID
+func (_e *CategoryRepositoryMock_Expecter) HasCategoriesByUserID(ctx interface{}, userID interface{}) *CategoryRepositoryMock_HasCategoriesByUserID_Call {
+	return &CategoryRepositoryMock_HasCategoriesByUserID_Call{Call: _e.mock.On("HasCategoriesByUserID", ctx, userID)}
+}
+
+func (_c *CategoryRepositoryMock_HasCategoriesByUserID_Call) Run(run func(ctx context.Context, userID shared.ID)) *CategoryRepositoryMock_HasCategoriesByUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 shared.ID
+		if args[1] != nil {
+			arg1 = args[1].(shared.ID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *CategoryRepositoryMock_HasCategoriesByUserID_Call) Return(b bool, err error) *CategoryRepositoryMock_HasCategoriesByUserID_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *CategoryRepositoryMock_HasCategoriesByUserID_Call) RunAndReturn(run func(ctx context.Context, userID shared.ID) (bool, error)) *CategoryRepositoryMock_HasCategoriesByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}

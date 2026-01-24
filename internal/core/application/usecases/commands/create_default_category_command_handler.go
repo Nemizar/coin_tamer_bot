@@ -58,6 +58,15 @@ func (c createDefaultCategoryCommandHandler) Handle(ctx context.Context, command
 		return err
 	}
 
+	hasCategories, err := c.uow.CategoryRepository().HasCategoriesByUserID(ctx, u.ID())
+	if err != nil {
+		return err
+	}
+
+	if hasCategories {
+		return errs.NewEntityAlreadyExistsError("categories", "user_id", u.ID().String())
+	}
+
 	for _, tpl := range c.getDefaultsCategory() {
 		parent, err := category.New(
 			tpl.name,

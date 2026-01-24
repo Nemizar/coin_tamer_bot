@@ -91,6 +91,13 @@ func TestCreateDefaultCategoryCommandHandler_Success(t *testing.T) {
 		Return(testUser, nil).
 		Once()
 
+	// Ожидаем, что у пользователя нет категорий
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(false, nil).
+		Once()
+
 	// Ожидаем создание категорий - всего 36 категорий (12 родительских + 24 дочерних)
 	categoryRepoMock.
 		EXPECT().
@@ -231,6 +238,13 @@ func TestCreateDefaultCategoryCommandHandler_CommitError(t *testing.T) {
 		Return(testUser, nil).
 		Once()
 
+	// Ожидаем, что у пользователя нет категорий
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(false, nil).
+		Once()
+
 	// Ожидаем создание категорий
 	categoryRepoMock.
 		EXPECT().
@@ -334,6 +348,13 @@ func TestCreateDefaultCategoryCommandHandler_CategoryCreateError(t *testing.T) {
 		Return(testUser, nil).
 		Once()
 
+	// Ожидаем, что у пользователя нет категорий
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(false, nil).
+		Once()
+
 	// Ожидаем, что создание категории вернет ошибку
 	createError := errors.New("create category error")
 	categoryRepoMock.
@@ -387,6 +408,13 @@ func TestCreateDefaultCategoryCommandHandler_CategoryTypeValidation(t *testing.T
 		Return(testUser, nil).
 		Once()
 
+	// Ожидаем, что у пользователя нет категорий
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(false, nil).
+		Once()
+
 	// Проверяем, что создаваемые категории имеют правильный тип
 	categoryRepoMock.
 		EXPECT().
@@ -420,6 +448,120 @@ func TestCreateDefaultCategoryCommandHandler_CategoryTypeValidation(t *testing.T
 	assert.NoError(t, err)
 
 	// Проверяем, что моки вызваны в соответствии с ожиданиями
+	userRepoMock.AssertExpectations(t)
+	categoryRepoMock.AssertExpectations(t)
+	uowMock.AssertExpectations(t)
+}
+
+func TestCreateDefaultCategoryCommandHandler_CategoriesAlreadyExist(t *testing.T) {
+	ctx := context.Background()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	// Создаем тестового пользователя
+	testUser, err := user.New("test_user", "123", user.ProviderTelegram)
+	require.NoError(t, err)
+
+	cmd, err := commands.NewCreateDefaultCategoryCommand("123", user.ProviderTelegram)
+	require.NoError(t, err)
+
+	uowMock, userRepoMock, categoryRepoMock := setupCreateDefaultCategoryMocks()
+
+	// Ожидаем, что пользователь будет найден
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(ctx, user.ProviderTelegram, "123").
+		Return(testUser, nil).
+		Once()
+
+	// Ожидаем, что у пользователя уже есть категории
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(true, nil).
+		Once()
+
+	// Create не должен вызываться, так как категории уже существуют
+	uowMock.
+		EXPECT().
+		Begin(ctx).
+		Return(nil).
+		Once()
+	uowMock.
+		EXPECT().
+		RollbackUnlessCommitted().
+		Return(nil).
+		Once()
+	// Commit не вызывается при наличии существующих категорий
+
+	handler, err := commands.NewCreateDefaultCategoryCommandHandler(logger, uowMock)
+	require.NoError(t, err)
+
+	err = handler.Handle(ctx, cmd)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, errs.ErrEntityAlreadyExists))
+
+	// Проверяем, что Create не был вызван
+	categoryRepoMock.AssertNotCalled(t, "Create")
+	userRepoMock.AssertExpectations(t)
+	categoryRepoMock.AssertExpectations(t)
+	uowMock.AssertExpectations(t)
+}
+
+func TestCreateDefaultCategoryCommandHandler_CategoriesAlreadyExistReturnsCorrectErrorType(t *testing.T) {
+	ctx := context.Background()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	// Создаем тестового пользователя
+	testUser, err := user.New("test_user", "123", user.ProviderTelegram)
+	require.NoError(t, err)
+
+	cmd, err := commands.NewCreateDefaultCategoryCommand("123", user.ProviderTelegram)
+	require.NoError(t, err)
+
+	uowMock, userRepoMock, categoryRepoMock := setupCreateDefaultCategoryMocks()
+
+	// Ожидаем, что пользователь будет найден
+	userRepoMock.
+		EXPECT().
+		FindByExternalProvider(ctx, user.ProviderTelegram, "123").
+		Return(testUser, nil).
+		Once()
+
+	// Ожидаем, что у пользователя уже есть категории
+	categoryRepoMock.
+		EXPECT().
+		HasCategoriesByUserID(ctx, testUser.ID()).
+		Return(true, nil).
+		Once()
+
+	uowMock.
+		EXPECT().
+		Begin(ctx).
+		Return(nil).
+		Once()
+	uowMock.
+		EXPECT().
+		RollbackUnlessCommitted().
+		Return(nil).
+		Once()
+
+	handler, err := commands.NewCreateDefaultCategoryCommandHandler(logger, uowMock)
+	require.NoError(t, err)
+
+	err = handler.Handle(ctx, cmd)
+	assert.Error(t, err)
+
+	// Проверяем, что возвращается правильный тип ошибки
+	var entityAlreadyExistsErr *errs.EntityAlreadyExistsError
+	assert.ErrorAs(t, err, &entityAlreadyExistsErr)
+	assert.Equal(t, "categories", entityAlreadyExistsErr.Entity)
+	assert.Equal(t, "user_id", entityAlreadyExistsErr.Field)
+	assert.Equal(t, testUser.ID().String(), entityAlreadyExistsErr.Value)
+
+	// Проверяем, что Create не был вызван
+	categoryRepoMock.AssertNotCalled(t, "Create")
 	userRepoMock.AssertExpectations(t)
 	categoryRepoMock.AssertExpectations(t)
 	uowMock.AssertExpectations(t)
